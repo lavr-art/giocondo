@@ -66,7 +66,7 @@ func (r *Remote) Check(ctx context.Context, in Request) error {
 	if err != nil {
 		return ErrUnavailable
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != 200 {
 		return ErrUnavailable
 	}
@@ -87,35 +87,35 @@ func Handler(token string, allowed map[string]bool, c Checker) http.Handler {
 	sem := make(chan struct{}, 4)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+token)) != 1 {
-			http.Error(w, "unauthorized", 401)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 		if r.Method != "POST" {
-			http.Error(w, "method", 405)
+			http.Error(w, "method", http.StatusMethodNotAllowed)
 			return
 		}
 		var req Request
 		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&req); err != nil {
-			http.Error(w, "invalid request", 400)
+			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		}
 		ip, err := netip.ParseAddr(req.IP)
 		if err != nil || !ip.Is4() || !allowed[TargetKey(req)] {
-			http.Error(w, "target not allowed", 403)
+			http.Error(w, "target not allowed", http.StatusForbidden)
 			return
 		}
 		select {
 		case sem <- struct{}{}:
 			defer func() { <-sem }()
 		default:
-			http.Error(w, "probe busy", 503)
+			http.Error(w, "probe busy", http.StatusServiceUnavailable)
 			return
 		}
 		err = c.Check(r.Context(), req)
 		if errors.Is(err, ErrUnavailable) {
-			http.Error(w, "probe unavailable", 503)
+			http.Error(w, "probe unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

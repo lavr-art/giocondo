@@ -13,7 +13,7 @@ func TestInstallationCannotOverwriteActiveNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	n := &store.Node{Name: "n", Host: "n.example.com", IP: "192.0.2.1"}
 	_ = s.CreateNode(ctx, n)
 	old := &store.Installation{NodeID: n.ID, Identity: "n", IP: n.IP}

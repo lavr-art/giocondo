@@ -14,7 +14,7 @@ func StopServices(ctx context.Context, t SSHTarget, key *DeployKey) error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = c.Close() })
 	defer stop()
 	return runPrivileged(c, "systemctl stop giocondo-vpn-agent.service giocondo-vpn-sing-box.service")
@@ -24,14 +24,14 @@ func ExportACME(ctx context.Context, t SSHTarget, key *DeployKey) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = c.Close() })
 	defer stop()
 	session, err := c.NewSession()
 	if err != nil {
 		return nil, err
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 	var buf limitedBuffer
 	session.Stdout = &buf
 	session.Stderr = io.Discard
@@ -64,7 +64,7 @@ func StartServices(ctx context.Context, t SSHTarget, key *DeployKey) error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = c.Close() })
 	defer stop()
 	return runPrivileged(c, "systemctl start giocondo-vpn-sing-box.service giocondo-vpn-agent.service")

@@ -11,17 +11,14 @@ const (
 	EventUserExpired        = "user_expired"         // the term has expired
 	EventUserTrafficWarning = "user_traffic_warning" // TrafficWarnPercent% of the limit is used
 	EventUserExpiring       = "user_expiring"        // less than ExpiryWarnBefore is left until the term ends
-	EventNodeDown           = "node_down"            // offline for longer than NodeDownAfter
-	EventNodeUp             = "node_up"              // back online after node_down
+	EventNodeDown           = "node_down"            // three failed availability checks in a row on the active IP
+	EventNodeUp             = "node_up"              // checks pass again after node_down
 )
 
-// Warning and node event thresholds.
+// Warning thresholds.
 const (
 	TrafficWarnPercent = 80
 	ExpiryWarnBefore   = 3 * 24 * time.Hour
-	// NodeDownAfter is how long a node must be offline before node_down: a short
-	// agent reconnect (restart, network change) produces no events.
-	NodeDownAfter = 2 * time.Minute
 )
 
 // Event is a panel event. It is sent to webhooks (Service.Notify) as JSON.

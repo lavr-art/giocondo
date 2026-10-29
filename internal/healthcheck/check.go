@@ -121,7 +121,7 @@ func (l *Local) Check(ctx context.Context, r Request) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 	path := filepath.Join(dir, "config.json")
 	if err = os.WriteFile(path, cfg, 0600); err != nil {
 		return err
@@ -131,8 +131,8 @@ func (l *Local) Check(ctx context.Context, r Request) error {
 	if err = cmd.Start(); err != nil {
 		return fmt.Errorf("%w: cannot start sing-box client", ErrUnavailable)
 	}
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
+	done := make(chan struct{})
+	go func() { _ = cmd.Wait(); close(done) }()
 	defer func() {
 		_ = cmd.Process.Kill()
 		select {
@@ -254,7 +254,7 @@ func (l *Local) ready(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("%w: challenge endpoint unavailable", ErrUnavailable)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(res.Body, 256))
 	if err != nil || res.StatusCode != 200 || string(data) != nonce {
 		return fmt.Errorf("%w: invalid challenge response", ErrUnavailable)

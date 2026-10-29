@@ -28,11 +28,10 @@ func (s *Service) Watch(ctx context.Context, interval time.Duration) {
 //   - a user became inactive or active again (term, traffic): Kick, so nodes
 //     do not wait for a rebuild; a transition to limit/expired emits an event;
 //   - warnings about TrafficWarnPercent% of traffic and an approaching term end, once each;
-//   - auto-deletion of users expired more than AutoDeleteExpiredDays days ago;
-//   - node_down / node_up.
+//   - auto-deletion of users expired more than AutoDeleteExpiredDays days ago.
 //
-// What has been seen and warned about is stored in the database (UserWatch, DownNotified), so
-// events are not repeated after a panel restart.
+// What has been seen and warned about is stored in the database (UserWatch), so
+// events are not repeated after a panel restart. node_down / node_up come from the health checks (health.go).
 func (s *Service) WatchOnce(ctx context.Context) error {
 	users, err := s.Store.ListUsers(ctx)
 	if err != nil {
@@ -89,38 +88,5 @@ func (s *Service) WatchOnce(ctx context.Context) error {
 		s.kick()
 	}
 
-	return errors.Join(errs...)
-}
-
-func (s *Service) watchNodes(ctx context.Context, now time.Time) error {
-	nodes, err := s.Store.ListNodes(ctx)
-	if err != nil {
-		return err
-	}
-	var errs []error
-	for _, n := range nodes {
-		var typ string
-		switch {
-		case n.Status == store.NodeOffline && !n.DownNotified && (n.LastSeen == nil || now.Sub(*n.LastSeen) >= NodeDownAfter):
-			typ = EventNodeDown
-		case n.Status == store.NodeOnline && n.DownNotified:
-			typ = EventNodeUp
-		default:
-			continue
-		}
-		if err := s.Store.SetNodeDownNotified(ctx, n.ID, typ == EventNodeDown); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		s.log().Info("node "+typ[len("node_"):], "node", n.Name)
-		if s.Notify != nil {
-			v, err := s.nodeView(ctx, n)
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-			s.emit(Event{Type: typ, Node: &v})
-		}
-	}
 	return errors.Join(errs...)
 }

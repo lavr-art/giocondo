@@ -12,7 +12,7 @@ func TestNetworkStateAndOperationLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	n := &Node{Name: "n1", Host: "192.0.2.1", IP: "192.0.2.1"}
 	if err = s.CreateNode(ctx, n); err != nil {
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func TestAdoptingInstallationPreservesAppliedHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	n := &Node{Name: "legacy", Host: "legacy.example.com"}
 	_ = s.CreateNode(ctx, n)
 	_ = s.SetNodeApplied(ctx, n.ID, "existing-hash", "")
@@ -80,7 +80,7 @@ func TestActivationReassignsPreviouslyUsedIP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	n := &Node{Name: "n", Host: "n.example.com", IP: "192.0.2.1"}
 	_ = s.CreateNode(ctx, n)
 	first := &Installation{NodeID: n.ID, Identity: "first", IP: n.IP}

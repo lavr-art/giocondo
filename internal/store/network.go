@@ -63,7 +63,7 @@ func (s *SQLite) ListAddresses(ctx context.Context, nodeID int64) ([]Address, er
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []Address{}
 	for rows.Next() {
 		var a Address
@@ -169,7 +169,7 @@ func (s *SQLite) ListProbes(ctx context.Context, nodeID int64) ([]ProbeResult, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []ProbeResult{}
 	for rows.Next() {
 		var p ProbeResult
@@ -243,7 +243,7 @@ func (s *SQLite) ListNetworkOperations(ctx context.Context, nodeID int64) ([]Net
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []NetworkOperation{}
 	for rows.Next() {
 		var data string
@@ -269,7 +269,7 @@ func (s *SQLite) Installations(ctx context.Context, nodeID int64) ([]Installatio
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []Installation{}
 	for rows.Next() {
 		var i Installation

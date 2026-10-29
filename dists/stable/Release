@@ -1,0 +1,27 @@
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Thu, 29 Oct 2026 14:42:23 +0000
+Label: giocondo-vpn
+Origin: giocondo-vpn
+Suite: stable
+MD5Sum:
+ de4780a27998ac33902ee7e1bb76cb11             2356 main/binary-amd64/Packages
+ cd3be78a8f8e518c582375e42ab59c5c             1088 main/binary-amd64/Packages.gz
+ 654f6bc254f4fff68951223aa10a0042             2356 main/binary-arm64/Packages
+ dd08e047df57517b79dcdf7a83926581             1095 main/binary-arm64/Packages.gz
+SHA1:
+ 5059b0f03c6a4fee23cf1b82e63ec7e66afa88a3             2356 main/binary-amd64/Packages
+ 198cfa7992413a8476cce491e7c04f53a559080c             1088 main/binary-amd64/Packages.gz
+ 48cbe1b540b5549f51330cce326453a2495881b2             2356 main/binary-arm64/Packages
+ 9553f90d7e2e85deefb4e17d6edacfdb66c86e48             1095 main/binary-arm64/Packages.gz
+SHA256:
+ 48676bf528cf877141b8cf0174d4670b096a59b603bf37d8cdaba2f9cb40daa6             2356 main/binary-amd64/Packages
+ 4ed162b41608f836036bfffc4b544f10e298e5a1f27d60b03b22f53d89bbd8d8             1088 main/binary-amd64/Packages.gz
+ 991c7006c3edc421c79bc4fda47f97d54150878414a93d5db7c42e3002f17cb4             2356 main/binary-arm64/Packages
+ a0f3a42446568ecd54d970eed7027cb040bb665794bd1e2b7a7f4fa0dc189873             1095 main/binary-arm64/Packages.gz
+SHA512:
+ 8c0ea3748d7661a7630a2482ef1865ce244925f426378c0352377fb706d891cceb2e880ca73f5a9ca20fbfcc2660823a843a541943dc9770620f10e8c70624e5             2356 main/binary-amd64/Packages
+ de30543d4bc2df3e5c233344d044f0bd2d1e86226730573cbf93c797a9ca565570f068783c89f8f8dc6763e7166cab5a731a42661a29f7cd0907be99df36bcdd             1088 main/binary-amd64/Packages.gz
+ 572053b4cd81b9f7c3777f9a1079b9a74ce9484273dc297aecb943007c7b5c4719e02591ae448eaff94f66bfff68f23ac22a8dbe4a7beb7647f1eb13dfe89bc7             2356 main/binary-arm64/Packages
+ 067b12d75ca665f646a03acfd1e1cdac219de614e85a4c82dd82291977af7217d6aab13d920d88e4181879e4daabcdfb59f372bf089e7396b70f3ca534e823f8             1095 main/binary-arm64/Packages.gz

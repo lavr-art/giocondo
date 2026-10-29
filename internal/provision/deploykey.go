@@ -14,12 +14,12 @@ import (
 )
 
 // KeyComment is the comment of the panel public key in authorized_keys; the key is removed by it.
-const KeyComment = "vpnctl-panel"
+const KeyComment = "giocondo-vpn-panel"
 
 // DeployKey is the panel SSH key for installing the agent on your own servers.
 type DeployKey struct {
 	Signer ssh.Signer
-	// AuthorizedKey is the line for ~/.ssh/authorized_keys: "ssh-ed25519 AAAA… vpnctl-panel".
+	// AuthorizedKey is the line for ~/.ssh/authorized_keys: "ssh-ed25519 AAAA… giocondo-vpn-panel".
 	AuthorizedKey string
 }
 

@@ -45,7 +45,7 @@ type Service struct {
 	Kick           func()           // rebuild node configs; nil does nothing
 	SubURL         string           // https://sub.example.com is the public subscription server address
 	AgentAddr      string           // panel gRPC host:port for agents, comma-separated fallbacks (for install instructions)
-	AptRepo        string           // apt repository with vpnctl-agent for instructions; empty means DefaultAptRepo
+	AptRepo        string           // apt repository with giocondo-vpn-agent for instructions; empty means DefaultAptRepo
 	PKIDir         string           // PKI directory for issuing agent certificates
 	Now            func() time.Time // nil — time.Now
 	Log            *slog.Logger
@@ -174,7 +174,7 @@ type CreateUserInput struct {
 }
 
 func validName(name string) error {
-	if strings.HasPrefix(name, "vpnctl-probe-") {
+	if strings.HasPrefix(name, "giocondo-vpn-probe-") {
 		return invalid("reserved user name")
 	}
 	if !singbox.ValidUserName(name) {

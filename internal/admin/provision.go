@@ -35,7 +35,7 @@ func (s *Service) remoteNode(ctx context.Context, id int64) (*store.Node, error)
 		return nil, err
 	}
 	if n.Runtime == store.RuntimeLocal {
-		return nil, invalid("node %s runs on the panel machine: use `vpnctl-panel local-node`", n.Name)
+		return nil, invalid("node %s runs on the panel machine: use `giocondo-vpn-panel local-node`", n.Name)
 	}
 	return n, nil
 }

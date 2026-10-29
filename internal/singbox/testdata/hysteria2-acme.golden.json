@@ -34,7 +34,7 @@
           "domain": [
             "n1.example.com"
           ],
-          "data_directory": "/var/lib/vpnctl/sing-box/acme",
+          "data_directory": "/var/lib/giocondo-vpn/sing-box/acme",
           "email": "admin@example.com"
         }
       }

@@ -2,7 +2,7 @@
 // and holds one bidirectional Sync stream. The agent's first message is Hello.
 syntax = "proto3";
 
-package vpnctl.node.v1;
+package giocondo.node.v1;
 option go_package = "github.com/artemlavr/giocondo/internal/nodeapi/pb";
 
 service NodeService {

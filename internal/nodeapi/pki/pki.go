@@ -70,7 +70,7 @@ func InitCA(dir string) error {
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber:          newSerial(),
-		Subject:               pkix.Name{CommonName: "vpnctl CA"},
+		Subject:               pkix.Name{CommonName: "giocondo-vpn CA"},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(caValidity),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,

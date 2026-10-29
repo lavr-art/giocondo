@@ -22,7 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	NodeService_Sync_FullMethodName = "/vpnctl.node.v1.NodeService/Sync"
+	NodeService_Sync_FullMethodName = "/giocondo.node.v1.NodeService/Sync"
 )
 
 // NodeServiceClient is the client API for NodeService service.
@@ -103,7 +103,7 @@ type NodeService_SyncServer = grpc.BidiStreamingServer[AgentMessage, PanelMessag
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var NodeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "vpnctl.node.v1.NodeService",
+	ServiceName: "giocondo.node.v1.NodeService",
 	HandlerType: (*NodeServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{

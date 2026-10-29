@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: vpnctl panel API
+  title: giocondo-vpn panel API
   version: "1"
   description: |
     Panel REST API. Every request carries the `Authorization: Bearer <token>` header. Tokens are created
@@ -299,7 +299,7 @@ paths:
       x-scope: node-sync
       description: |
         Paste it into the user-data / cloud config field when creating a server at any cloud (Hetzner,
-        Vultr, DigitalOcean, …). On first boot it installs vpnctl-agent from apt, puts the certificate in place,
+        Vultr, DigitalOcean, …). On first boot it installs giocondo-vpn-agent from apt, puts the certificate in place,
         enables ufw with the node protocol ports; the node comes online by itself. Contains the node private key.
       responses:
         "200": {description: OK, content: {text/cloud-config: {schema: {type: string}}}}
@@ -352,7 +352,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: {type: object, properties: {authorized_key: {type: string, example: "ssh-ed25519 AAAA... vpnctl-panel"}}}
+              schema: {type: object, properties: {authorized_key: {type: string, example: "ssh-ed25519 AAAA... giocondo-vpn-panel"}}}
   /api/tokens:
     get:
       summary: List API tokens (without the tokens themselves)

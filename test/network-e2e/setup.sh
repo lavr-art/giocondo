@@ -10,15 +10,17 @@ for pkg in ['agent','sing-box']:
  d=root/pkg
  if d.exists(): shutil.rmtree(d)
  (d/'DEBIAN').mkdir(parents=True)
- depends='Depends: vpnctl-sing-box\n' if pkg=='agent' else ''
- (d/'DEBIAN/control').write_text(f'Package: vpnctl-{pkg}\nVersion: 0.0.1~network7\nArchitecture: {arch}\nMaintainer: local test <test@example.invalid>\n{depends}Description: Local task 7 integration package\n')
- files=[(f'/work/{pkg}', 'usr/bin/vpnctl-agent' if pkg=='agent' else 'usr/lib/vpnctl/sing-box'),(f'/src/deploy/apt/systemd/vpnctl-{pkg}.service',f'lib/systemd/system/vpnctl-{pkg}.service')]
- if pkg=='agent': files.append(('/src/deploy/apt/deb/agent.env','usr/share/vpnctl/agent.env.example'))
+ depends='Depends: giocondo-vpn-sing-box\n' if pkg=='agent' else ''
+ (d/'DEBIAN/control').write_text(f'Package: giocondo-vpn-{pkg}\nVersion: 0.0.1~network7\nArchitecture: {arch}\nMaintainer: local test <test@example.invalid>\n{depends}Description: Local task 7 integration package\n')
+ files=[(f'/work/{pkg}', 'usr/bin/giocondo-vpn-agent' if pkg=='agent' else 'usr/lib/giocondo-vpn/sing-box'),(f'/src/deploy/apt/systemd/giocondo-vpn-{pkg}.service',f'lib/systemd/system/giocondo-vpn-{pkg}.service')]
+ if pkg=='agent': files.append(('/src/deploy/apt/deb/agent.env','usr/share/giocondo-vpn/agent.env.example'))
  for source,dest in files:
   p=d/dest;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,p)
  shutil.copy2(f'/src/deploy/apt/deb/{pkg}-postinst.sh',d/'DEBIAN/postinst');os.chmod(d/'DEBIAN/postinst',0o755)
- subprocess.run(['dpkg-deb','--build',str(d),f'/work/packages/vpnctl-{pkg}_0.0.1~network7_{arch}.deb'],check=True,stdout=subprocess.DEVNULL)
+ subprocess.run(['dpkg-deb','--build',str(d),f'/work/packages/giocondo-vpn-{pkg}_0.0.1~network7_{arch}.deb'],check=True,stdout=subprocess.DEVNULL)
 PY
+# gpg-agent cannot keep its sockets on the host bind mount (/work); with /run/user/0 present GnuPG puts them there.
+mkdir -p -m 700 /run/user/0
 if [ ! -d /work/gnupg ]; then
  mkdir -m 700 /work/gnupg
  GNUPGHOME=/work/gnupg gpg --batch --passphrase '' --quick-gen-key 'Network test <network@example.invalid>' ed25519 sign never

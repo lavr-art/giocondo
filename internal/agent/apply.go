@@ -18,7 +18,7 @@ import (
 // Applier writes the sing-box config and restarts the service, rolling back to the previous config on failure.
 type Applier struct {
 	SingBoxBin    string                    // path to sing-box for `sing-box check`
-	ConfigPath    string                    // /etc/vpnctl/sing-box/config.json
+	ConfigPath    string                    // /etc/giocondo-vpn/sing-box/config.json
 	RestartCmd    []string                  // e.g. systemctl restart sing-box
 	StatusCmd     []string                  // exit code 0 means the service is running
 	SettleDelay   time.Duration             // how long to wait after a restart before checking the status

@@ -28,7 +28,7 @@ func runProbe(args []string) error {
 	for _, target := range strings.Split(*allow, ",") {
 		allowed[strings.TrimSpace(target)] = true
 	}
-	checker := &healthcheck.Local{Binary: envOr("PANEL_SINGBOX_BIN", "/usr/lib/vpnctl/sing-box"), ChallengeURL: os.Getenv("PANEL_PROBE_CHALLENGE_URL"), RootCAFile: os.Getenv("PANEL_PROBE_CA")}
+	checker := &healthcheck.Local{Binary: envOr("PANEL_SINGBOX_BIN", "/usr/lib/giocondo-vpn/sing-box"), ChallengeURL: os.Getenv("PANEL_PROBE_CHALLENGE_URL"), RootCAFile: os.Getenv("PANEL_PROBE_CA")}
 	srv := &http.Server{Addr: *listen, Handler: healthcheck.Handler(token, allowed, checker), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: time.Minute}
 	return srv.ListenAndServeTLS(*cert, *key)
 }

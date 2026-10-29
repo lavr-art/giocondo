@@ -9,10 +9,10 @@ import (
 )
 
 // CloudInitDir is where user-data puts the installation files; the directory is removed afterwards.
-const CloudInitDir = "/root/vpnctl"
+const CloudInitDir = "/root/giocondo-vpn"
 
 // CloudInitLog is the installation log on the node.
-const CloudInitLog = "/var/log/vpnctl-install.log"
+const CloudInitLog = "/var/log/giocondo-vpn-install.log"
 
 type cloudConfig struct {
 	WriteFiles []cloudFile `yaml:"write_files"`
@@ -45,7 +45,7 @@ func CloudInit(files []File, cmd string) ([]byte, error) {
 		return nil, err
 	}
 	head := "#cloud-config\n" +
-		"# vpnctl: node agent installation. Contains the node private key, do not publish this file.\n" +
+		"# giocondo-vpn: node agent installation. Contains the node private key, do not publish this file.\n" +
 		"# Installation log on the server: " + CloudInitLog + "\n"
 	return append([]byte(head), body...), nil
 }

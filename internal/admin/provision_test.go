@@ -38,7 +38,7 @@ func TestCloudInitForNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	y := string(data)
-	for _, want := range []string{"#cloud-config", "/root/vpnctl/agent.key", "--panel", "panel.example.com:9443", "--firewall"} {
+	for _, want := range []string{"#cloud-config", "/root/giocondo-vpn/agent.key", "--panel", "panel.example.com:9443", "--firewall"} {
 		if !strings.Contains(y, want) {
 			t.Errorf("cloud-init lacks %q", want)
 		}
@@ -90,7 +90,7 @@ func TestProvisionSSHJobFails(t *testing.T) {
 		t.Errorf("unknown job: %v", err)
 	}
 	key, err := svc.DeployKey()
-	if err != nil || !strings.HasSuffix(key.AuthorizedKey, " vpnctl-panel") {
+	if err != nil || !strings.HasSuffix(key.AuthorizedKey, " giocondo-vpn-panel") {
 		t.Errorf("deploy key %v %v", key, err)
 	}
 }

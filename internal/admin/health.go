@@ -29,7 +29,7 @@ func (s *Service) EnsureMonitor(ctx context.Context, nodeID int64) (*singbox.Use
 	if err != nil {
 		return nil, err
 	}
-	u := singbox.User{Name: fmt.Sprintf("vpnctl-probe-%d", nodeID), UUID: uuid}
+	u := singbox.User{Name: fmt.Sprintf("giocondo-vpn-probe-%d", nodeID), UUID: uuid}
 	ins, err := s.Store.ListInbounds(ctx, nodeID)
 	if err != nil {
 		return nil, err

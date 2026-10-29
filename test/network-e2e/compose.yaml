@@ -1,7 +1,7 @@
-name: vpnctl-network-e2e
+name: giocondo-vpn-network-e2e
 x-base: &base
   cap_add: [NET_ADMIN]
-  image: vpnctl-network-e2e
+  image: giocondo-vpn-network-e2e
   volumes:
     - ../..:/src:ro
     - ../../bin/network-e2e:/work

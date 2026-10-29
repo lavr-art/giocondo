@@ -1,4 +1,4 @@
-# Release on a v* tag: GoReleaser builds the debs (vpnctl-agent, vpnctl-sing-box; amd64, arm64) and
+# Release on a v* tag: GoReleaser builds the debs (giocondo-vpn-panel, giocondo-vpn-agent, giocondo-vpn-sing-box; amd64, arm64) and
 # a GitHub Release, then the packages are added to the apt repository on the gh-pages branch (GitHub Pages).
 # The APT_GPG_PRIVATE_KEY secret is the signing private key without a passphrase (docs/release.md).
 name: release

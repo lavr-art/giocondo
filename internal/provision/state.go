@@ -17,7 +17,7 @@ func StopServices(ctx context.Context, t SSHTarget, key *DeployKey) error {
 	defer c.Close()
 	stop := context.AfterFunc(ctx, func() { _ = c.Close() })
 	defer stop()
-	return runPrivileged(c, "systemctl stop vpnctl-agent.service vpnctl-sing-box.service")
+	return runPrivileged(c, "systemctl stop giocondo-vpn-agent.service giocondo-vpn-sing-box.service")
 }
 func ExportACME(ctx context.Context, t SSHTarget, key *DeployKey) ([]byte, error) {
 	c, _, err := dial(ctx, t, key)
@@ -43,7 +43,7 @@ func ExportACME(ctx context.Context, t SSHTarget, key *DeployKey) ([]byte, error
 	if strings.TrimSpace(uid) != "0" {
 		prefix = "sudo -n "
 	}
-	err = session.Run(prefix + "tar czf - -C /var/lib/vpnctl/sing-box/acme .")
+	err = session.Run(prefix + "tar czf - -C /var/lib/giocondo-vpn/sing-box/acme .")
 	if err != nil {
 		return nil, errors.New("ACME state export failed")
 	}
@@ -67,7 +67,7 @@ func StartServices(ctx context.Context, t SSHTarget, key *DeployKey) error {
 	defer c.Close()
 	stop := context.AfterFunc(ctx, func() { _ = c.Close() })
 	defer stop()
-	return runPrivileged(c, "systemctl start vpnctl-sing-box.service vpnctl-agent.service")
+	return runPrivileged(c, "systemctl start giocondo-vpn-sing-box.service giocondo-vpn-agent.service")
 }
 
 func runPrivileged(c *ssh.Client, cmd string) error {

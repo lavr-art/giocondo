@@ -80,7 +80,7 @@ def main():
   exec_('client','sh','-c',f'nohup /work/sing-box run -c /work/client-{kind}.json > /work/client-{kind}.log 2>&1 & echo $! > /work/client-{kind}.pid')
  fingerprints={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in WORK.glob('client-*.json')}
  for kind in selected:wait('initial client traffic '+kind,lambda kind=kind:client_request(kind),60)
- before=exec_('node1','cat','/etc/vpnctl/sing-box/config.json').stdout
+ before=exec_('node1','cat','/etc/giocondo-vpn/sing-box/config.json').stdout
  # Drop public listeners only on IP .11; SSH/agent control traffic remain intact.
  for protocol,ports in [('tcp','443'),('udp','8443,51820')]:
   exec_('node1','iptables','-t','raw','-I','PREROUTING','1','-d','172.30.77.11','-p',protocol,'-m','multiport','--dports',ports,'-j','DROP')
@@ -93,16 +93,16 @@ def main():
  job(api('POST',f'nodes/{NODE}/rotate-ip',{'mode':'existing_ip','ip':'172.30.77.12'}))
  for kind in selected:wait('same client process reconnects after DNS switch '+kind,lambda kind=kind:client_request(kind),150)
  REPORT.append(f'DNS reconnection elapsed {time.monotonic()-started:.1f}s (TTL 60)')
- assert exec_('node1','cat','/etc/vpnctl/sing-box/config.json').stdout==before
+ assert exec_('node1','cat','/etc/giocondo-vpn/sing-box/config.json').stdout==before
  wait('warning cleared on new IP',lambda:not node()['warning'])
  assert {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in WORK.glob('client-*.json')}==fingerprints
  # A fresh server receives exactly the same logical configuration and keys.
  op=api('POST',f'nodes/{NODE}/rotate-ip',{'mode':'ssh','ip':'172.30.77.21','ssh':{'password':'network-test-only','keep_key':True},'source_ssh':{'host':'172.30.77.12','password':'network-test-only'}})
  job(op)
  for kind in selected:wait('same client config after SSH migration '+kind,lambda kind=kind:client_request(kind),150)
- assert exec_('node2','cat','/etc/vpnctl/sing-box/config.json').stdout==before
+ assert exec_('node2','cat','/etc/giocondo-vpn/sing-box/config.json').stdout==before
  assert node()['host']==preview['host'] and node()['ip']=='172.30.77.21'
- assert exec_('node1','systemctl','is-active','vpnctl-agent',check=False).returncode!=0
+ assert exec_('node1','systemctl','is-active','giocondo-vpn-agent',check=False).returncode!=0
  REPORT.append('SSH migration preserved complete config, keys, node ID and subscription')
  # A failed readiness check must not change DNS or the active address.
  old=api('GET',f'nodes/{NODE}/addresses')

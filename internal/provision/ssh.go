@@ -181,7 +181,7 @@ func (l *lockedWriter) Write(p []byte) (int, error) {
 // from directory dir in it and remove everything afterwards.
 func InstallScript(dir, cmd string) string {
 	return `set -e
-d=$(mktemp -d /tmp/vpnctl-install.XXXXXX)
+d=$(mktemp -d /tmp/giocondo-vpn-install.XXXXXX)
 trap 'rm -rf "$d"' EXIT
 tar xzf - -C "$d"
 cd "$d"/` + quote(dir) + `
@@ -203,8 +203,8 @@ echo "panel key kept in authorized_keys"
 	}
 	return `f=~/.ssh/authorized_keys
 [ -f "$f" ] || exit 0
-grep -v ' ` + KeyComment + `$' "$f" > "$f.vpnctl" || true
-cat "$f.vpnctl" > "$f" && rm -f "$f.vpnctl"
+grep -v ' ` + KeyComment + `$' "$f" > "$f.giocondo-vpn" || true
+cat "$f.giocondo-vpn" > "$f" && rm -f "$f.giocondo-vpn"
 echo "panel key removed from authorized_keys"
 `
 }

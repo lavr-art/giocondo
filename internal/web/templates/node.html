@@ -91,7 +91,7 @@
   {{if eq .Runtime "local"}}
   <p>The agent runs on the panel machine and connects to it through 127.0.0.1. To reissue the certificate and
      restart the agent, run on the panel machine as root:</p>
-  <pre>sudo vpnctl-panel local-node -name {{.Name}}</pre>
+  <pre>sudo giocondo-vpn-panel local-node -name {{.Name}}</pre>
   {{else}}
   {{with $.Data.Job}}{{template "job" .}}{{end}}
   <h3>New server: cloud-init</h3>

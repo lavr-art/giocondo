@@ -22,7 +22,7 @@ func TestNodeProvisioningPages(t *testing.T) {
 	nodePath := "/nodes/" + itoa(n.ID)
 
 	_, body := c.do("GET", nodePath, nil, nil)
-	for _, want := range []string{"Download user-data", "provision-ssh", "ssh-ed25519 ", "vpnctl-panel"} {
+	for _, want := range []string{"Download user-data", "provision-ssh", "ssh-ed25519 ", "giocondo-vpn-panel"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("node page lacks %q", want)
 		}

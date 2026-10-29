@@ -77,14 +77,14 @@ func loadConfig(getenv func(string) string) (config, error) {
 		return def
 	}
 	c := config{
-		caFile:     or("AGENT_CA", "/etc/vpnctl/agent/ca.crt"),
-		certFile:   or("AGENT_CERT", "/etc/vpnctl/agent/agent.crt"),
-		key:        or("AGENT_KEY", "/etc/vpnctl/agent/agent.key"),
-		singBoxBin: or("AGENT_SINGBOX_BIN", "/usr/lib/vpnctl/sing-box"),
-		configPath: or("AGENT_SINGBOX_CONFIG", "/etc/vpnctl/sing-box/config.json"),
+		caFile:     or("AGENT_CA", "/etc/giocondo-vpn/agent/ca.crt"),
+		certFile:   or("AGENT_CERT", "/etc/giocondo-vpn/agent/agent.crt"),
+		key:        or("AGENT_KEY", "/etc/giocondo-vpn/agent/agent.key"),
+		singBoxBin: or("AGENT_SINGBOX_BIN", "/usr/lib/giocondo-vpn/sing-box"),
+		configPath: or("AGENT_SINGBOX_CONFIG", "/etc/giocondo-vpn/sing-box/config.json"),
 		statsAddr:  or("AGENT_STATS_ADDR", "127.0.0.1:10085"),
-		restartCmd: strings.Fields(or("AGENT_RESTART_CMD", "systemctl restart vpnctl-sing-box")),
-		statusCmd:  strings.Fields(or("AGENT_STATUS_CMD", "systemctl is-active --quiet vpnctl-sing-box")),
+		restartCmd: strings.Fields(or("AGENT_RESTART_CMD", "systemctl restart giocondo-vpn-sing-box")),
+		statusCmd:  strings.Fields(or("AGENT_STATUS_CMD", "systemctl is-active --quiet giocondo-vpn-sing-box")),
 	}
 	// One AGENT_PANEL_SERVER_NAME for all addresses (one panel, one certificate), otherwise the address host.
 	serverName := getenv("AGENT_PANEL_SERVER_NAME")

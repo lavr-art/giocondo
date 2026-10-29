@@ -19,8 +19,8 @@ import (
 )
 
 // runLocalNode turns the panel machine into a node (Runtime local): creates the node if missing, issues
-// an agent certificate and installs it for the local vpnctl-agent, which connects to 127.0.0.1.
-// Run as root (sudo vpnctl-panel local-node -host vpn.example.com): it writes /etc/vpnctl/agent and
+// an agent certificate and installs it for the local giocondo-vpn-agent, which connects to 127.0.0.1.
+// Run as root (sudo giocondo-vpn-panel local-node -host vpn.example.com): it writes /etc/giocondo-vpn/agent and
 // restarts the agent. Database and PKI files touched by the command are returned to their owner,
 // the panel user.
 func runLocalNode(args []string, stdout io.Writer, rt admin.Runtime) error {
@@ -31,7 +31,7 @@ func runLocalNode(args []string, stdout io.Writer, rt admin.Runtime) error {
 	host := fs.String("host", "", "domain or IP clients connect to (required for a new node)")
 	protocols := fs.String("protocols", "vless,hysteria2,wireguard", "protocols for a new node")
 	grpcListen := fs.String("grpc", envOr("PANEL_GRPC_LISTEN", ":9443"), "panel gRPC listen address (PANEL_GRPC_LISTEN)")
-	restart := fs.Bool("restart", true, "enable and restart vpnctl-agent via systemctl (false — e.g. in a container)")
+	restart := fs.Bool("restart", true, "enable and restart giocondo-vpn-agent via systemctl (false — e.g. in a container)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

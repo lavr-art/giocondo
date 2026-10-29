@@ -399,11 +399,11 @@ func (s *Service) agentInstallIdentity(ctx context.Context, id int64, firewall b
      ssh root@<node> 'tar xzf %[1]s-agent.tar.gz'
 2. On the node as root:
      cd %[1]s && ./install-agent.sh --panel %[2]s --repo %[3]s
-   The script adds the apt repository, installs vpnctl-agent and vpnctl-sing-box,
-   puts the certificates into /etc/vpnctl/agent and the panel address into /etc/vpnctl/agent.env.
-   Without repository access: --deb vpnctl-agent_*.deb --deb vpnctl-sing-box_*.deb.
+   The script adds the apt repository, installs giocondo-vpn-agent and giocondo-vpn-sing-box,
+   puts the certificates into /etc/giocondo-vpn/agent and the panel address into /etc/giocondo-vpn/agent.env.
+   Without repository access: --deb giocondo-vpn-agent_*.deb --deb giocondo-vpn-sing-box_*.deb.
    Close everything except SSH and the node protocol ports (ufw): --firewall '%[4]s'.
-3. Logs: journalctl -u vpnctl-agent -f. The node becomes online in the panel.
+3. Logs: journalctl -u giocondo-vpn-agent -f. The node becomes online in the panel.
 
 agent.key is a secret: do not send it in plain text.
 `, name, panel, s.AptRepoURL(), fw)

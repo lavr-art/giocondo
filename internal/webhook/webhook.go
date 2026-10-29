@@ -100,7 +100,7 @@ func (s *Sender) post(ctx context.Context, url string, body []byte) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "vpnctl-webhook")
+	req.Header.Set("User-Agent", "giocondo-vpn-webhook")
 	if s.secret != "" {
 		req.Header.Set("X-Webhook-Secret", s.secret)
 	}

@@ -22,17 +22,17 @@ type Runtime interface {
 	Install(ctx context.Context, n store.Node, cert AgentCert) error
 }
 
-// LocalRuntime is the agent from the vpnctl-agent package on this machine. It runs as root:
+// LocalRuntime is the agent from the giocondo-vpn-agent package on this machine. It runs as root:
 // writes the agent certificates and env and restarts it. The layout matches the deb (deploy/apt/deb).
 type LocalRuntime struct {
-	EtcDir     string   // "/etc/vpnctl"
-	EnvExample string   // env template from the package: "/usr/share/vpnctl/agent.env.example"
+	EtcDir     string   // "/etc/giocondo-vpn"
+	EnvExample string   // env template from the package: "/usr/share/giocondo-vpn/agent.env.example"
 	RestartCmd []string // nil means systemctl enable + restart; an empty slice means no restart
 }
 
 // DefaultLocalRuntime is the deb package layout.
 func DefaultLocalRuntime() *LocalRuntime {
-	return &LocalRuntime{EtcDir: "/etc/vpnctl", EnvExample: "/usr/share/vpnctl/agent.env.example"}
+	return &LocalRuntime{EtcDir: "/etc/giocondo-vpn", EnvExample: "/usr/share/giocondo-vpn/agent.env.example"}
 }
 
 // Install puts the certificates into EtcDir/agent, sets AGENT_PANEL_ADDR in EtcDir/agent.env
@@ -77,8 +77,8 @@ func (l *LocalRuntime) Install(ctx context.Context, n store.Node, cert AgentCert
 
 func (l *LocalRuntime) restart(ctx context.Context) error {
 	cmds := [][]string{
-		{"systemctl", "enable", "vpnctl-sing-box.service", "vpnctl-agent.service"},
-		{"systemctl", "restart", "vpnctl-agent.service"},
+		{"systemctl", "enable", "giocondo-vpn-sing-box.service", "giocondo-vpn-agent.service"},
+		{"systemctl", "restart", "giocondo-vpn-agent.service"},
 	}
 	if l.RestartCmd != nil {
 		cmds = nil

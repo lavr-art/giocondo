@@ -5,7 +5,7 @@
 //	panel ca server -dir pki -host H[,H]   panel certificate for agents
 //	panel ca agent  -dir pki -node NAME    node agent certificate (CN = node name)
 //	panel token create -name N -scope S    issue a REST API token (monitor | node-sync | admin)
-//	panel local-node -host H               make the panel machine a node (as root; agent from vpnctl-agent)
+//	panel local-node -host H               make the panel machine a node (as root; agent from giocondo-vpn-agent)
 //	panel provision ssh -node N -host H    install the agent on your own server over SSH
 //	panel provision cloud-init -node N     user-data for a new cloud server
 package main
@@ -128,7 +128,7 @@ func run(ctx context.Context) error {
 		}
 		svc.HealthInterval = d
 	}
-	svc.Checker = &healthcheck.Local{Binary: envOr("PANEL_SINGBOX_BIN", "/usr/lib/vpnctl/sing-box"), ChallengeURL: envOr("PANEL_PROBE_CHALLENGE_URL", subURL+"/health/challenge"), RootCAFile: os.Getenv("PANEL_PROBE_CA")}
+	svc.Checker = &healthcheck.Local{Binary: envOr("PANEL_SINGBOX_BIN", "/usr/lib/giocondo-vpn/sing-box"), ChallengeURL: envOr("PANEL_PROBE_CHALLENGE_URL", subURL+"/health/challenge"), RootCAFile: os.Getenv("PANEL_PROBE_CA")}
 	svc.ProbePoints = map[string]healthcheck.Checker{}
 	if point := os.Getenv("PANEL_PROBE_URL"); point != "" {
 		if !strings.HasPrefix(point, "https://") || os.Getenv("PANEL_PROBE_TOKEN") == "" {
@@ -209,7 +209,7 @@ func run(ctx context.Context) error {
 	ui.Register(adminMux)
 
 	subMux := http.NewServeMux()
-	(&subscription.Handler{Source: st, Title: envOr("PANEL_SUB_TITLE", "vpnctl")}).Register(subMux)
+	(&subscription.Handler{Source: st, Title: envOr("PANEL_SUB_TITLE", "giocondo-vpn")}).Register(subMux)
 	subMux.HandleFunc("GET /health/challenge", healthcheck.ChallengeHandler)
 
 	go svc.Watch(ctx, time.Minute)
@@ -319,10 +319,10 @@ func splitList(s string) []string {
 	return out
 }
 
-// debStateDir is the panel data directory of the vpnctl-panel package. If it exists, commands without
-// PANEL_DB / PANEL_PKI_DIR (e.g. `sudo -u vpnctl vpnctl-panel token create`) use it
+// debStateDir is the panel data directory of the giocondo-vpn-panel package. If it exists, commands without
+// PANEL_DB / PANEL_PKI_DIR (e.g. `sudo -u giocondo-vpn giocondo-vpn-panel token create`) use it
 // instead of files in the current directory.
-const debStateDir = "/var/lib/vpnctl/panel"
+const debStateDir = "/var/lib/giocondo-vpn/panel"
 
 func defaultDB() string {
 	if st, err := os.Stat(debStateDir); err == nil && st.IsDir() {

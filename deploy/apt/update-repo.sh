@@ -4,7 +4,7 @@
 #   deploy/apt/update-repo.sh REPO_DIR GPG_KEY_ID file.deb...
 #
 # Layout: pool/main/*.deb, dists/stable/main/binary-{amd64,arm64}/Packages[.gz],
-# dists/stable/{Release,InRelease,Release.gpg}, vpnctl.gpg is the public key (binary, for signed-by).
+# dists/stable/{Release,InRelease,Release.gpg}, giocondo-vpn.gpg is the public key (binary, for signed-by).
 # Old versions are not removed from pool. Requires apt-ftparchive (apt-utils), gpg and the key in the keyring.
 set -eu
 
@@ -24,8 +24,8 @@ for arch in amd64 arm64; do
 done
 
 apt-ftparchive \
-  -o APT::FTPArchive::Release::Origin=vpnctl \
-  -o APT::FTPArchive::Release::Label=vpnctl \
+  -o APT::FTPArchive::Release::Origin=giocondo-vpn \
+  -o APT::FTPArchive::Release::Label=giocondo-vpn \
   -o APT::FTPArchive::Release::Suite=stable \
   -o APT::FTPArchive::Release::Codename=stable \
   -o APT::FTPArchive::Release::Architectures="amd64 arm64" \
@@ -36,6 +36,6 @@ mv dists/stable/Release.new dists/stable/Release
 rm -f dists/stable/InRelease dists/stable/Release.gpg
 gpg --batch --yes --local-user "$KEY" --clearsign -o dists/stable/InRelease dists/stable/Release
 gpg --batch --yes --local-user "$KEY" --detach-sign -o dists/stable/Release.gpg dists/stable/Release
-gpg --batch --yes --export "$KEY" > vpnctl.gpg
+gpg --batch --yes --export "$KEY" > giocondo-vpn.gpg
 touch .nojekyll # Pages serves files as is
 echo "repo updated: $(ls pool/main | wc -l) packages"

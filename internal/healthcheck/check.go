@@ -117,7 +117,7 @@ func (l *Local) Check(ctx context.Context, r Request) error {
 	if err != nil {
 		return err
 	}
-	dir, err := os.MkdirTemp("", "vpnctl-probe-")
+	dir, err := os.MkdirTemp("", "giocondo-vpn-probe-")
 	if err != nil {
 		return err
 	}

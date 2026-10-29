@@ -750,18 +750,18 @@ var File_node_proto protoreflect.FileDescriptor
 const file_node_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"node.proto\x12\x0evpnctl.node.v1\"\xad\x02\n" +
-	"\fAgentMessage\x12-\n" +
-	"\x05hello\x18\x01 \x01(\v2\x15.vpnctl.node.v1.HelloH\x00R\x05hello\x120\n" +
-	"\x06health\x18\x02 \x01(\v2\x16.vpnctl.node.v1.HealthH\x00R\x06health\x12-\n" +
-	"\x05stats\x18\x03 \x01(\v2\x15.vpnctl.node.v1.StatsH\x00R\x05stats\x12@\n" +
-	"\fapply_result\x18\x04 \x01(\v2\x1b.vpnctl.node.v1.ApplyResultH\x00R\vapplyResult\x12D\n" +
-	"\x0enetwork_result\x18\x05 \x01(\v2\x1b.vpnctl.node.v1.ApplyResultH\x00R\rnetworkResultB\x05\n" +
-	"\x03msg\"\xd8\x01\n" +
-	"\fPanelMessage\x12@\n" +
-	"\fapply_config\x18\x01 \x01(\v2\x1b.vpnctl.node.v1.ApplyConfigH\x00R\vapplyConfig\x127\n" +
-	"\tstats_ack\x18\x02 \x01(\v2\x18.vpnctl.node.v1.StatsAckH\x00R\bstatsAck\x12F\n" +
-	"\x0enetwork_config\x18\x03 \x01(\v2\x1d.vpnctl.node.v1.NetworkConfigH\x00R\rnetworkConfigB\x05\n" +
+	"node.proto\x12\x10giocondo.node.v1\"\xb7\x02\n" +
+	"\fAgentMessage\x12/\n" +
+	"\x05hello\x18\x01 \x01(\v2\x17.giocondo.node.v1.HelloH\x00R\x05hello\x122\n" +
+	"\x06health\x18\x02 \x01(\v2\x18.giocondo.node.v1.HealthH\x00R\x06health\x12/\n" +
+	"\x05stats\x18\x03 \x01(\v2\x17.giocondo.node.v1.StatsH\x00R\x05stats\x12B\n" +
+	"\fapply_result\x18\x04 \x01(\v2\x1d.giocondo.node.v1.ApplyResultH\x00R\vapplyResult\x12F\n" +
+	"\x0enetwork_result\x18\x05 \x01(\v2\x1d.giocondo.node.v1.ApplyResultH\x00R\rnetworkResultB\x05\n" +
+	"\x03msg\"\xde\x01\n" +
+	"\fPanelMessage\x12B\n" +
+	"\fapply_config\x18\x01 \x01(\v2\x1d.giocondo.node.v1.ApplyConfigH\x00R\vapplyConfig\x129\n" +
+	"\tstats_ack\x18\x02 \x01(\v2\x1a.giocondo.node.v1.StatsAckH\x00R\bstatsAck\x12H\n" +
+	"\x0enetwork_config\x18\x03 \x01(\v2\x1f.giocondo.node.v1.NetworkConfigH\x00R\rnetworkConfigB\x05\n" +
 	"\x03msg\"\x97\x01\n" +
 	"\x05Hello\x12#\n" +
 	"\ragent_version\x18\x01 \x01(\tR\fagentVersion\x12'\n" +
@@ -777,10 +777,10 @@ const file_node_proto_rawDesc = "" +
 	"\vApplyResult\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x0e\n" +
 	"\x02ok\x18\x02 \x01(\bR\x02ok\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"L\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"N\n" +
 	"\x05Stats\x12\x10\n" +
-	"\x03seq\x18\x01 \x01(\x04R\x03seq\x121\n" +
-	"\x05users\x18\x02 \x03(\v2\x1b.vpnctl.node.v1.UserTrafficR\x05users\"E\n" +
+	"\x03seq\x18\x01 \x01(\x04R\x03seq\x123\n" +
+	"\x05users\x18\x02 \x03(\v2\x1d.giocondo.node.v1.UserTrafficR\x05users\"E\n" +
 	"\vUserTraffic\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02up\x18\x02 \x01(\x03R\x02up\x12\x12\n" +
@@ -800,9 +800,9 @@ const file_node_proto_rawDesc = "" +
 	"\n" +
 	"primary_ip\x18\x01 \x01(\tR\tprimaryIp\x12\x18\n" +
 	"\aaliases\x18\x02 \x03(\tR\aaliases\x12\x1b\n" +
-	"\tudp_ports\x18\x03 \x03(\rR\budpPorts2U\n" +
-	"\vNodeService\x12F\n" +
-	"\x04Sync\x12\x1c.vpnctl.node.v1.AgentMessage\x1a\x1c.vpnctl.node.v1.PanelMessage(\x010\x01B3Z1github.com/artemlavr/giocondo/internal/nodeapi/pbb\x06proto3"
+	"\tudp_ports\x18\x03 \x03(\rR\budpPorts2Y\n" +
+	"\vNodeService\x12J\n" +
+	"\x04Sync\x12\x1e.giocondo.node.v1.AgentMessage\x1a\x1e.giocondo.node.v1.PanelMessage(\x010\x01B3Z1github.com/artemlavr/giocondo/internal/nodeapi/pbb\x06proto3"
 
 var (
 	file_node_proto_rawDescOnce sync.Once
@@ -818,29 +818,29 @@ func file_node_proto_rawDescGZIP() []byte {
 
 var file_node_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_node_proto_goTypes = []any{
-	(*AgentMessage)(nil),  // 0: vpnctl.node.v1.AgentMessage
-	(*PanelMessage)(nil),  // 1: vpnctl.node.v1.PanelMessage
-	(*Hello)(nil),         // 2: vpnctl.node.v1.Hello
-	(*ApplyConfig)(nil),   // 3: vpnctl.node.v1.ApplyConfig
-	(*ApplyResult)(nil),   // 4: vpnctl.node.v1.ApplyResult
-	(*Stats)(nil),         // 5: vpnctl.node.v1.Stats
-	(*UserTraffic)(nil),   // 6: vpnctl.node.v1.UserTraffic
-	(*StatsAck)(nil),      // 7: vpnctl.node.v1.StatsAck
-	(*Health)(nil),        // 8: vpnctl.node.v1.Health
-	(*NetworkConfig)(nil), // 9: vpnctl.node.v1.NetworkConfig
+	(*AgentMessage)(nil),  // 0: giocondo.node.v1.AgentMessage
+	(*PanelMessage)(nil),  // 1: giocondo.node.v1.PanelMessage
+	(*Hello)(nil),         // 2: giocondo.node.v1.Hello
+	(*ApplyConfig)(nil),   // 3: giocondo.node.v1.ApplyConfig
+	(*ApplyResult)(nil),   // 4: giocondo.node.v1.ApplyResult
+	(*Stats)(nil),         // 5: giocondo.node.v1.Stats
+	(*UserTraffic)(nil),   // 6: giocondo.node.v1.UserTraffic
+	(*StatsAck)(nil),      // 7: giocondo.node.v1.StatsAck
+	(*Health)(nil),        // 8: giocondo.node.v1.Health
+	(*NetworkConfig)(nil), // 9: giocondo.node.v1.NetworkConfig
 }
 var file_node_proto_depIdxs = []int32{
-	2,  // 0: vpnctl.node.v1.AgentMessage.hello:type_name -> vpnctl.node.v1.Hello
-	8,  // 1: vpnctl.node.v1.AgentMessage.health:type_name -> vpnctl.node.v1.Health
-	5,  // 2: vpnctl.node.v1.AgentMessage.stats:type_name -> vpnctl.node.v1.Stats
-	4,  // 3: vpnctl.node.v1.AgentMessage.apply_result:type_name -> vpnctl.node.v1.ApplyResult
-	4,  // 4: vpnctl.node.v1.AgentMessage.network_result:type_name -> vpnctl.node.v1.ApplyResult
-	3,  // 5: vpnctl.node.v1.PanelMessage.apply_config:type_name -> vpnctl.node.v1.ApplyConfig
-	7,  // 6: vpnctl.node.v1.PanelMessage.stats_ack:type_name -> vpnctl.node.v1.StatsAck
-	9,  // 7: vpnctl.node.v1.PanelMessage.network_config:type_name -> vpnctl.node.v1.NetworkConfig
-	6,  // 8: vpnctl.node.v1.Stats.users:type_name -> vpnctl.node.v1.UserTraffic
-	0,  // 9: vpnctl.node.v1.NodeService.Sync:input_type -> vpnctl.node.v1.AgentMessage
-	1,  // 10: vpnctl.node.v1.NodeService.Sync:output_type -> vpnctl.node.v1.PanelMessage
+	2,  // 0: giocondo.node.v1.AgentMessage.hello:type_name -> giocondo.node.v1.Hello
+	8,  // 1: giocondo.node.v1.AgentMessage.health:type_name -> giocondo.node.v1.Health
+	5,  // 2: giocondo.node.v1.AgentMessage.stats:type_name -> giocondo.node.v1.Stats
+	4,  // 3: giocondo.node.v1.AgentMessage.apply_result:type_name -> giocondo.node.v1.ApplyResult
+	4,  // 4: giocondo.node.v1.AgentMessage.network_result:type_name -> giocondo.node.v1.ApplyResult
+	3,  // 5: giocondo.node.v1.PanelMessage.apply_config:type_name -> giocondo.node.v1.ApplyConfig
+	7,  // 6: giocondo.node.v1.PanelMessage.stats_ack:type_name -> giocondo.node.v1.StatsAck
+	9,  // 7: giocondo.node.v1.PanelMessage.network_config:type_name -> giocondo.node.v1.NetworkConfig
+	6,  // 8: giocondo.node.v1.Stats.users:type_name -> giocondo.node.v1.UserTraffic
+	0,  // 9: giocondo.node.v1.NodeService.Sync:input_type -> giocondo.node.v1.AgentMessage
+	1,  // 10: giocondo.node.v1.NodeService.Sync:output_type -> giocondo.node.v1.PanelMessage
 	10, // [10:11] is the sub-list for method output_type
 	9,  // [9:10] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name

@@ -367,7 +367,7 @@ func (s *Service) installCandidate(ctx context.Context, n *store.Node, i store.I
 	}
 	if len(state) > 0 {
 		files = append(files, provision.File{Path: "acme.tar.gz", Data: state, Mode: 0600})
-		cmd = "mkdir -p /var/lib/vpnctl/sing-box/acme && tar xzf acme.tar.gz -C /var/lib/vpnctl/sing-box/acme && " + cmd
+		cmd = "mkdir -p /var/lib/giocondo-vpn/sing-box/acme && tar xzf acme.tar.gz -C /var/lib/giocondo-vpn/sing-box/acme && " + cmd
 	}
 	bundle, err := provision.TarGz(name, files, s.now())
 	if err != nil {

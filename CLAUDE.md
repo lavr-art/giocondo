@@ -1,13 +1,13 @@
 # CLAUDE.md
 
-Working rules for AI agents in the giocondo (vpnctl) repository.
+Working rules for AI agents in the giocondo (giocondo-vpn) repository.
 Before making changes, study the affected subsystems, their tests and contracts. Look for the
 answer in the repository first (`rg`, `rg --files`), then in external documentation.
 Do not invent paths, commands, capabilities or implementation status based on an old plan.
 
 ## Purpose and stack
 
-vpnctl is a control panel for VPN nodes for personal use, replacing Hiddify Manager.
+giocondo-vpn is a control panel for VPN nodes for personal use, replacing Hiddify Manager.
 The panel stores the state, agents serve the nodes, and users get subscriptions
 for Hiddify, Happ, v2rayNG and other compatible clients.
 
@@ -27,9 +27,8 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 
 | Path | Responsibility |
 | --- | --- |
-| `cmd/panel/` | HTTP/gRPC startup, env configuration, CLI: CA, tokens, seed, local-node, provision, probe |
+| `cmd/panel/` | HTTP/gRPC startup, env configuration, CLI: CA, tokens, local-node, provision, probe |
 | `cmd/agent/` | Agent startup and a check of its dependency boundary |
-| `cmd/genconf/` | CLI: filling YAML, generating a config, connection data |
 | `internal/admin/` | Shared business operations, validation, events, provisioning, DNS/IP, health checks |
 | `internal/api/` | REST wrapper over admin, route registry and token scopes |
 | `internal/web/` | Web wrapper over admin, sessions, templates, `static/app.js`, `static/style.css` |
@@ -53,8 +52,6 @@ Task documentation:
 
 - `docs/api.yaml` is the REST API specification; a test checks it against `api.Routes`.
 - `docs/release.md` covers package releases and apt repository setup.
-- `docs/provision-docker-test.md` is the installation check report and its limits.
-- `docs/superpowers/plans/` holds plans and logs; they do not replace checking the current code.
 - `Makefile`, `.goreleaser.yaml`, the env files in `deploy/apt/deb/` define commands and packaging.
 
 Do not consider the Hetzner/Vultr cloud APIs, a Telegram bot or importing old WireGuard servers
@@ -206,11 +203,11 @@ the WG endpoint has no regular per-user counters.
 - Online over Sync does not prove VPN availability. Keep the checks of real
   connections, the separate service credentials and the option of an external check point.
   Service credentials must not end up in user subscriptions.
-- Panel: `/usr/bin/vpnctl-panel`, `/etc/vpnctl/panel.env`, data and PKI
-  in `/var/lib/vpnctl/panel`; the service runs as the `vpnctl` user.
-- Node: `/usr/bin/vpnctl-agent`, `/usr/lib/vpnctl/sing-box`, certificates in
-  `/etc/vpnctl/agent/`, env in `/etc/vpnctl/agent.env`, config in
-  `/etc/vpnctl/sing-box/config.json`, state in `/var/lib/vpnctl/sing-box`.
+- Panel: `/usr/bin/giocondo-vpn-panel`, `/etc/giocondo-vpn/panel.env`, data and PKI
+  in `/var/lib/giocondo-vpn/panel`; the service runs as the `giocondo-vpn` user.
+- Node: `/usr/bin/giocondo-vpn-agent`, `/usr/lib/giocondo-vpn/sing-box`, certificates in
+  `/etc/giocondo-vpn/agent/`, env in `/etc/giocondo-vpn/agent.env`, config in
+  `/etc/giocondo-vpn/sing-box/config.json`, state in `/var/lib/giocondo-vpn/sing-box`.
 - When changing installation, keep embed, the deb scripts and the systemd units consistent.
   An upgrade must not overwrite the user's env or weaken key permissions.
   Do not replace our own core package with the official binary without v2ray_api.
@@ -242,7 +239,7 @@ The main set before committing code changes:
 make build test lint
 ```
 
-`make build` creates `bin/panel`, `bin/agent`, `bin/genconf` without CGO;
+`make build` creates `bin/panel`, `bin/agent` without CGO;
 `make test` runs `go test ./...`; `make lint` runs `golangci-lint run ./...`.
 The linter must support the Go version from `go.mod`; CI uses v2.15.0.
 The current CI runs the Go tests and lint, while the external checks below run separately.

@@ -1,0 +1,24 @@
+# sing-box on the node: our own build with with_v2ray_api from the giocondo-vpn-sing-box package.
+# giocondo-vpn-agent writes the config and restarts the service.
+[Unit]
+Description=sing-box (managed by giocondo-vpn-agent)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/giocondo-vpn/sing-box/config.json
+
+[Service]
+ExecStart=/usr/lib/giocondo-vpn/sing-box run -c /etc/giocondo-vpn/sing-box/config.json -D /var/lib/giocondo-vpn/sing-box
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=1048576
+# ACME certificates are kept in /var/lib/giocondo-vpn/sing-box/acme (singbox.DefaultACMEDataDir).
+StateDirectory=giocondo-vpn/sing-box
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 BIN     := bin
-CMDS    := panel agent genconf
+CMDS    := panel agent
 PROTOS  := $(wildcard proto/*.proto)
 
 # Our own sing-box build: the official release tags (release/DEFAULT_BUILD_TAGS_OTHERS)

@@ -12,7 +12,7 @@ import (
 // Default values for Options.
 const (
 	DefaultV2RayAPIListen = "127.0.0.1:10085"
-	DefaultACMEDataDir    = "/var/lib/vpnctl/sing-box/acme"
+	DefaultACMEDataDir    = "/var/lib/giocondo-vpn/sing-box/acme"
 	DefaultLogLevel       = "warn"
 	DefaultWGMTU          = 1408
 
@@ -234,7 +234,7 @@ func Build(n *Node, users []User, opts Options) (*Config, error) {
 
 	statUsers := make([]string, 0, len(users))
 	for _, u := range users {
-		if !strings.HasPrefix(u.Name, "vpnctl-probe-") {
+		if !strings.HasPrefix(u.Name, "giocondo-vpn-probe-") {
 			statUsers = append(statUsers, u.Name)
 		}
 	}
@@ -262,7 +262,7 @@ func Build(n *Node, users []User, opts Options) (*Config, error) {
 					Action:       "route",
 					Outbound:     out,
 				})
-				if !strings.HasPrefix(u.Name, "vpnctl-probe-") {
+				if !strings.HasPrefix(u.Name, "giocondo-vpn-probe-") {
 					statOutbounds = append(statOutbounds, out)
 				}
 			}

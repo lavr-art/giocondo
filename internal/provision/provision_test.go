@@ -54,14 +54,14 @@ func TestCloudInit(t *testing.T) {
 	if err := yaml.Unmarshal(data, &cc); err != nil {
 		t.Fatal(err)
 	}
-	if len(cc.WriteFiles) != 3 || cc.WriteFiles[1].Path != "/root/vpnctl/agent.key" || cc.WriteFiles[1].Permissions != "0600" {
+	if len(cc.WriteFiles) != 3 || cc.WriteFiles[1].Path != "/root/giocondo-vpn/agent.key" || cc.WriteFiles[1].Permissions != "0600" {
 		t.Fatalf("write_files %+v", cc.WriteFiles)
 	}
 	if got, _ := base64.StdEncoding.DecodeString(cc.WriteFiles[1].Content); string(got) != "KEY" {
 		t.Errorf("content %q", got)
 	}
 	if len(cc.RunCmd) != 1 || !strings.Contains(cc.RunCmd[0][2], "./install-agent.sh --panel 'p:9443'") ||
-		!strings.Contains(cc.RunCmd[0][2], "rm -rf /root/vpnctl") {
+		!strings.Contains(cc.RunCmd[0][2], "rm -rf /root/giocondo-vpn") {
 		t.Errorf("runcmd %q", cc.RunCmd)
 	}
 }
@@ -108,7 +108,7 @@ func TestScripts(t *testing.T) {
 	if !strings.Contains(out, "installed --panel p:1") {
 		t.Errorf("install output %q", out)
 	}
-	if m, _ := filepath.Glob("/tmp/vpnctl-install.*"); len(m) > 0 {
+	if m, _ := filepath.Glob("/tmp/giocondo-vpn-install.*"); len(m) > 0 {
 		// mktemp uses /tmp explicitly: check that this run's directory is removed.
 		for _, d := range m {
 			if _, err := os.Stat(filepath.Join(d, "n1", "agent.key")); err == nil {

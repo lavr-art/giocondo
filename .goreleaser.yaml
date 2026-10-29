@@ -1,13 +1,13 @@
-# Release: vpnctl-panel, vpnctl-agent and vpnctl-sing-box deb packages for linux amd64/arm64.
+# Release: giocondo-vpn-panel, giocondo-vpn-agent and giocondo-vpn-sing-box deb packages for linux amd64/arm64.
 # Locally: make deb (snapshot in dist/). In CI: .github/workflows/release.yml on a v* tag.
 # SINGBOX_VERSION (without "v") comes from the environment: make deb / the workflow take it from build/sing-box/go.mod.
 version: 2
-project_name: vpnctl
+project_name: giocondo-vpn
 
 builds:
   - id: panel
     main: ./cmd/panel
-    binary: vpnctl-panel
+    binary: giocondo-vpn-panel
     env: [CGO_ENABLED=0]
     goos: [linux]
     goarch: [amd64, arm64]
@@ -16,7 +16,7 @@ builds:
 
   - id: agent
     main: ./cmd/agent
-    binary: vpnctl-agent
+    binary: giocondo-vpn-agent
     env: [CGO_ENABLED=0]
     goos: [linux]
     goarch: [amd64, arm64]
@@ -44,77 +44,77 @@ archives:
   - id: agent
     ids: [agent]
     formats: [binary]
-    name_template: "vpnctl-agent_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "giocondo-vpn-agent_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 nfpms:
-  - id: vpnctl-sing-box
-    package_name: vpnctl-sing-box
+  - id: giocondo-vpn-sing-box
+    package_name: giocondo-vpn-sing-box
     ids: [sing-box]
     formats: [deb]
     file_name_template: "{{ .ConventionalFileName }}"
-    vendor: vpnctl
+    vendor: giocondo-vpn
     section: net
-    homepage: https://github.com/artemlavr/giocondo
-    maintainer: artemlavr <artemlavr@users.noreply.github.com>
+    homepage: https://github.com/lavr-art/giocondo
+    maintainer: lavr-art <lavr-art@users.noreply.github.com>
     license: GPL-3.0-or-later
     description: |-
-      sing-box {{ .Env.SINGBOX_VERSION }} built with with_v2ray_api for vpnctl nodes.
-      Managed by vpnctl-agent; does not conflict with the official sing-box package.
-    bindir: /usr/lib/vpnctl
+      sing-box {{ .Env.SINGBOX_VERSION }} built with with_v2ray_api for giocondo-vpn nodes.
+      Managed by giocondo-vpn-agent; does not conflict with the official sing-box package.
+    bindir: /usr/lib/giocondo-vpn
     contents:
-      - src: deploy/apt/systemd/vpnctl-sing-box.service
-        dst: /usr/lib/systemd/system/vpnctl-sing-box.service
+      - src: deploy/apt/systemd/giocondo-vpn-sing-box.service
+        dst: /usr/lib/systemd/system/giocondo-vpn-sing-box.service
     scripts:
       postinstall: deploy/apt/deb/sing-box-postinst.sh
       preremove: deploy/apt/deb/sing-box-prerm.sh
       postremove: deploy/apt/deb/sing-box-postrm.sh
 
-  - id: vpnctl-agent
-    package_name: vpnctl-agent
+  - id: giocondo-vpn-agent
+    package_name: giocondo-vpn-agent
     ids: [agent]
     formats: [deb]
     file_name_template: "{{ .ConventionalFileName }}"
-    vendor: vpnctl
+    vendor: giocondo-vpn
     section: net
-    homepage: https://github.com/artemlavr/giocondo
-    maintainer: artemlavr <artemlavr@users.noreply.github.com>
+    homepage: https://github.com/lavr-art/giocondo
+    maintainer: lavr-art <lavr-art@users.noreply.github.com>
     license: GPL-3.0-or-later
     description: |-
-      vpnctl node agent: connects to the vpnctl panel over gRPC/mTLS,
+      giocondo-vpn node agent: connects to the giocondo-vpn panel over gRPC/mTLS,
       applies sing-box config and reports per-user traffic.
     bindir: /usr/bin
-    dependencies: [vpnctl-sing-box, iptables]
+    dependencies: [giocondo-vpn-sing-box, iptables]
     contents:
-      - src: deploy/apt/systemd/vpnctl-agent.service
-        dst: /usr/lib/systemd/system/vpnctl-agent.service
+      - src: deploy/apt/systemd/giocondo-vpn-agent.service
+        dst: /usr/lib/systemd/system/giocondo-vpn-agent.service
       - src: deploy/apt/deb/agent.env
-        dst: /usr/share/vpnctl/agent.env.example
+        dst: /usr/share/giocondo-vpn/agent.env.example
     scripts:
       postinstall: deploy/apt/deb/agent-postinst.sh
       preremove: deploy/apt/deb/agent-prerm.sh
       postremove: deploy/apt/deb/agent-postrm.sh
 
-  - id: vpnctl-panel
-    package_name: vpnctl-panel
+  - id: giocondo-vpn-panel
+    package_name: giocondo-vpn-panel
     ids: [panel]
     formats: [deb]
     file_name_template: "{{ .ConventionalFileName }}"
-    vendor: vpnctl
+    vendor: giocondo-vpn
     section: net
-    homepage: https://github.com/artemlavr/giocondo
-    maintainer: artemlavr <artemlavr@users.noreply.github.com>
+    homepage: https://github.com/lavr-art/giocondo
+    maintainer: lavr-art <lavr-art@users.noreply.github.com>
     license: GPL-3.0-or-later
     description: |-
-      vpnctl panel: users, nodes, subscriptions, REST API and web interface.
-      Install vpnctl-agent too to use this machine as a node (vpnctl-panel local-node).
+      giocondo-vpn panel: users, nodes, subscriptions, REST API and web interface.
+      Install giocondo-vpn-agent too to use this machine as a node (giocondo-vpn-panel local-node).
     bindir: /usr/bin
     dependencies: [passwd]
-    recommends: [vpnctl-agent]
+    recommends: [giocondo-vpn-agent]
     contents:
-      - src: deploy/apt/systemd/vpnctl-panel.service
-        dst: /usr/lib/systemd/system/vpnctl-panel.service
+      - src: deploy/apt/systemd/giocondo-vpn-panel.service
+        dst: /usr/lib/systemd/system/giocondo-vpn-panel.service
       - src: deploy/apt/deb/panel.env
-        dst: /usr/share/vpnctl/panel.env.example
+        dst: /usr/share/giocondo-vpn/panel.env.example
     scripts:
       postinstall: deploy/apt/deb/panel-postinst.sh
       preremove: deploy/apt/deb/panel-prerm.sh

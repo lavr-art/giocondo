@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
-<title>{{.Title}} · vpnctl</title>
+<title>{{.Title}} · giocondo-vpn</title>
 <link rel="stylesheet" href="{{base}}/static/style.css">
 <script src="{{base}}/static/htmx.min.js" defer></script>
 <script src="{{base}}/static/app.js" defer></script>
@@ -12,7 +12,7 @@
 <body>
 {{if .Authed}}
 <header>
-  <span class="brand">vpnctl</span>
+  <span class="brand">giocondo-vpn</span>
   <nav>
     <a href="{{base}}/users" {{if eq .Nav "users"}}class="on"{{end}}>Users</a>
     <a href="{{base}}/nodes" {{if eq .Nav "nodes"}}class="on"{{end}}>Nodes</a>

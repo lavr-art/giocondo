@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	sessionCookie = "vpnctl_session"
+	sessionCookie = "giocondo_vpn_session"
 	sessionTTL    = 7 * 24 * time.Hour
 
 	loginWindow   = 10 * time.Minute

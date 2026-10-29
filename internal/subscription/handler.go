@@ -146,7 +146,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	title := h.Title
 	if title == "" {
-		title = "vpnctl"
+		title = "giocondo-vpn"
 	}
 	interval := h.UpdateInterval
 	if interval <= 0 {

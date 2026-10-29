@@ -9,18 +9,18 @@ services:
   setup:
     <<: *base
     build: {context: ., dockerfile: Dockerfile}
-    command: [sh, /src/deploy/network-e2e/setup.sh]
+    command: [sh, /src/test/network-e2e/setup.sh]
     networks: [test]
   control:
     <<: *base
-    command: [python3, /src/deploy/network-e2e/control.py]
+    command: [python3, /src/test/network-e2e/control.py]
     networks:
       test: {ipv4_address: 172.30.77.3, aliases: [control]}
   panel:
     <<: *base
     environment:
       PANEL_HEALTH_INTERVAL: ${PANEL_HEALTH_INTERVAL:-3s}
-    command: [sh, /src/deploy/network-e2e/panel.sh]
+    command: [sh, /src/test/network-e2e/panel.sh]
     networks:
       test: {ipv4_address: 172.30.77.2, aliases: [panel]}
   node1:
@@ -47,7 +47,7 @@ services:
       test: {ipv4_address: 172.30.77.4}
   probe:
     <<: *base
-    command: [sh, /src/deploy/network-e2e/probe.sh]
+    command: [sh, /src/test/network-e2e/probe.sh]
     networks:
       test: {ipv4_address: 172.30.77.5, aliases: [probe]}
 networks:

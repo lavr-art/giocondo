@@ -12,11 +12,11 @@ for pkg in ['agent','sing-box']:
  (d/'DEBIAN').mkdir(parents=True)
  depends='Depends: vpnctl-sing-box\n' if pkg=='agent' else ''
  (d/'DEBIAN/control').write_text(f'Package: vpnctl-{pkg}\nVersion: 0.0.1~network7\nArchitecture: {arch}\nMaintainer: local test <test@example.invalid>\n{depends}Description: Local task 7 integration package\n')
- files=[(f'/work/{pkg}', 'usr/bin/vpnctl-agent' if pkg=='agent' else 'usr/lib/vpnctl/sing-box'),(f'/src/deploy/systemd/vpnctl-{pkg}.service',f'lib/systemd/system/vpnctl-{pkg}.service')]
- if pkg=='agent': files.append(('/src/deploy/deb/agent.env','usr/share/vpnctl/agent.env.example'))
+ files=[(f'/work/{pkg}', 'usr/bin/vpnctl-agent' if pkg=='agent' else 'usr/lib/vpnctl/sing-box'),(f'/src/deploy/apt/systemd/vpnctl-{pkg}.service',f'lib/systemd/system/vpnctl-{pkg}.service')]
+ if pkg=='agent': files.append(('/src/deploy/apt/deb/agent.env','usr/share/vpnctl/agent.env.example'))
  for source,dest in files:
   p=d/dest;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,p)
- shutil.copy2(f'/src/deploy/deb/{pkg}-postinst.sh',d/'DEBIAN/postinst');os.chmod(d/'DEBIAN/postinst',0o755)
+ shutil.copy2(f'/src/deploy/apt/deb/{pkg}-postinst.sh',d/'DEBIAN/postinst');os.chmod(d/'DEBIAN/postinst',0o755)
  subprocess.run(['dpkg-deb','--build',str(d),f'/work/packages/vpnctl-{pkg}_0.0.1~network7_{arch}.deb'],check=True,stdout=subprocess.DEVNULL)
 PY
 if [ ! -d /work/gnupg ]; then

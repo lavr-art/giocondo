@@ -4,7 +4,6 @@
 //	panel ca init   -dir pki               create a private CA
 //	panel ca server -dir pki -host H[,H]   panel certificate for agents
 //	panel ca agent  -dir pki -node NAME    node agent certificate (CN = node name)
-//	panel seed      -in node.yaml          create a node and users from genconf YAML
 //	panel token create -name N -scope S    issue a REST API token (monitor | node-sync | admin)
 //	panel local-node -host H               make the panel machine a node (as root; agent from vpnctl-agent)
 //	panel provision ssh -node N -host H    install the agent on your own server over SSH
@@ -88,8 +87,6 @@ func runSubcommand(args []string) (bool, error) {
 		return true, runProbe(args[1:])
 	case "ca":
 		return true, runCA(args[1:])
-	case "seed":
-		return true, runSeed(args[1:])
 	case "token":
 		return true, runToken(args[1:], os.Stdout)
 	case "provision":

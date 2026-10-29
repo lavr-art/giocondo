@@ -1,6 +1,6 @@
-// Package deploy embeds agent installation files into the panel so it can serve them
-// in an archive together with the node certificates (admin.Service.AgentBundle).
-package deploy
+// Package apt embeds the agent installer into the panel so it can serve it in an archive
+// together with the node certificates (admin.Service.AgentBundle).
+package apt
 
 import "embed"
 

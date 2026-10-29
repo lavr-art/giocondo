@@ -9,7 +9,7 @@ import time
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 WORK=ROOT/'bin/network-e2e'
-COMPOSE=['docker','compose','-f',str(ROOT/'deploy/network-e2e/compose.yaml')]
+COMPOSE=['docker','compose','-f',str(ROOT/'test/network-e2e/compose.yaml')]
 REPORT=[]
 def run(*args,check=True):
  result=subprocess.run(COMPOSE+list(args),check=False,text=True,capture_output=True)
@@ -17,7 +17,7 @@ def run(*args,check=True):
  return result
 def exec_(service,*args,check=True):return run('exec','-T',service,*args,check=check)
 def api(method,path,body=None):
- args=['python3','/src/deploy/network-e2e/request.py',method,path]
+ args=['python3','/src/test/network-e2e/request.py',method,path]
  if body is not None:args.append(json.dumps(body))
  result=exec_('panel',*args)
  return json.loads(result.stdout)

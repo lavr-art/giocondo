@@ -44,7 +44,8 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/dns/`, `internal/healthcheck/` | Cloudflare DNS, local and external availability checks |
 | `internal/webhook/` | Panel event queue and delivery |
 | `proto/` | Source `.proto` files; generated with `make proto` |
-| `deploy/` | Embedded installer, systemd, deb scripts, apt, network Docker bench |
+| `deploy/apt/` | Delivery via deb packages and the apt repository: deb scripts, systemd units, embedded agent installer, repository script |
+| `test/network-e2e/` | Network Docker bench |
 | `build/sing-box/` | A separate Go module for our own core build |
 | `.github/workflows/` | CI and releases |
 
@@ -54,7 +55,7 @@ Task documentation:
 - `docs/release.md` covers package releases and apt repository setup.
 - `docs/provision-docker-test.md` is the installation check report and its limits.
 - `docs/superpowers/plans/` holds plans and logs; they do not replace checking the current code.
-- `Makefile`, `.goreleaser.yaml`, the env files in `deploy/deb/` define commands and packaging.
+- `Makefile`, `.goreleaser.yaml`, the env files in `deploy/apt/deb/` define commands and packaging.
 
 Do not consider the Hetzner/Vultr cloud APIs, a Telegram bot or importing old WireGuard servers
 implemented without code. AmneziaWG is postponed: add it only on explicit request.
@@ -255,7 +256,7 @@ The current CI runs the Go tests and lint, while the external checks below run s
 | Mihomo YAML | `MIHOMO_CHECK=1 go test -count=1 ./internal/subscription`, requires `mihomo` in PATH |
 | REST contract | `go test -count=1 ./internal/api` |
 | Agent dependencies | `go test -count=1 ./cmd/agent` |
-| DNS/IP, moving and node availability | `sh deploy/network-e2e/run.sh` in the isolated Docker bench |
+| DNS/IP, moving and node availability | `sh test/network-e2e/run.sh` in the isolated Docker bench |
 | deb/release | `make deb`; requirements and signing are in `docs/release.md` |
 
 A plain green `go test ./...` does not prove that the external validators ran:

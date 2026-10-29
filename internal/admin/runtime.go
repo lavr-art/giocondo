@@ -23,7 +23,7 @@ type Runtime interface {
 }
 
 // LocalRuntime is the agent from the vpnctl-agent package on this machine. It runs as root:
-// writes the agent certificates and env and restarts it. The layout matches the deb (deploy/deb).
+// writes the agent certificates and env and restarts it. The layout matches the deb (deploy/apt/deb).
 type LocalRuntime struct {
 	EtcDir     string   // "/etc/vpnctl"
 	EnvExample string   // env template from the package: "/usr/share/vpnctl/agent.env.example"

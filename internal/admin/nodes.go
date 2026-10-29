@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/artemlavr/giocondo/deploy"
+	"github.com/artemlavr/giocondo/deploy/apt"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pki"
 	"github.com/artemlavr/giocondo/internal/provision"
 	"github.com/artemlavr/giocondo/internal/singbox"
@@ -413,11 +413,11 @@ agent.key is a secret: do not send it in plain text.
 		{Path: "agent.key", Mode: 0o600, Data: []byte(c.AgentKey)},
 		{Path: "README.txt", Mode: 0o644, Data: []byte(readme)},
 	}
-	err = fs.WalkDir(deploy.Files, ".", func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(apt.Files, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		data, err := deploy.Files.ReadFile(path)
+		data, err := apt.Files.ReadFile(path)
 		if err != nil {
 			return err
 		}

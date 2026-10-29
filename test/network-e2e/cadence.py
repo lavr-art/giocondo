@@ -1,4 +1,8 @@
-"""Acceptance at the production 5-minute interval, after the fast E2E suite."""
+"""Acceptance at the production 5-minute interval, after the fast E2E suite.
+
+Run after a successful run.sh (it expects the post-migration state: one node on .21), ~13 minutes:
+  PANEL_HEALTH_INTERVAL=5m python3 test/network-e2e/cadence.py
+"""
 import datetime
 import json
 import pathlib

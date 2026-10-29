@@ -62,12 +62,12 @@ nfpms:
       Managed by vpnctl-agent; does not conflict with the official sing-box package.
     bindir: /usr/lib/vpnctl
     contents:
-      - src: deploy/systemd/vpnctl-sing-box.service
+      - src: deploy/apt/systemd/vpnctl-sing-box.service
         dst: /usr/lib/systemd/system/vpnctl-sing-box.service
     scripts:
-      postinstall: deploy/deb/sing-box-postinst.sh
-      preremove: deploy/deb/sing-box-prerm.sh
-      postremove: deploy/deb/sing-box-postrm.sh
+      postinstall: deploy/apt/deb/sing-box-postinst.sh
+      preremove: deploy/apt/deb/sing-box-prerm.sh
+      postremove: deploy/apt/deb/sing-box-postrm.sh
 
   - id: vpnctl-agent
     package_name: vpnctl-agent
@@ -85,14 +85,14 @@ nfpms:
     bindir: /usr/bin
     dependencies: [vpnctl-sing-box, iptables]
     contents:
-      - src: deploy/systemd/vpnctl-agent.service
+      - src: deploy/apt/systemd/vpnctl-agent.service
         dst: /usr/lib/systemd/system/vpnctl-agent.service
-      - src: deploy/deb/agent.env
+      - src: deploy/apt/deb/agent.env
         dst: /usr/share/vpnctl/agent.env.example
     scripts:
-      postinstall: deploy/deb/agent-postinst.sh
-      preremove: deploy/deb/agent-prerm.sh
-      postremove: deploy/deb/agent-postrm.sh
+      postinstall: deploy/apt/deb/agent-postinst.sh
+      preremove: deploy/apt/deb/agent-prerm.sh
+      postremove: deploy/apt/deb/agent-postrm.sh
 
   - id: vpnctl-panel
     package_name: vpnctl-panel
@@ -111,14 +111,14 @@ nfpms:
     dependencies: [passwd]
     recommends: [vpnctl-agent]
     contents:
-      - src: deploy/systemd/vpnctl-panel.service
+      - src: deploy/apt/systemd/vpnctl-panel.service
         dst: /usr/lib/systemd/system/vpnctl-panel.service
-      - src: deploy/deb/panel.env
+      - src: deploy/apt/deb/panel.env
         dst: /usr/share/vpnctl/panel.env.example
     scripts:
-      postinstall: deploy/deb/panel-postinst.sh
-      preremove: deploy/deb/panel-prerm.sh
-      postremove: deploy/deb/panel-postrm.sh
+      postinstall: deploy/apt/deb/panel-postinst.sh
+      preremove: deploy/apt/deb/panel-prerm.sh
+      postremove: deploy/apt/deb/panel-postrm.sh
 
 checksum:
   name_template: SHA256SUMS

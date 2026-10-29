@@ -347,7 +347,7 @@ func (s *Service) issueIdentity(identity string) (AgentCert, string, error) {
 }
 
 // DefaultAptRepo is the project apt repository on GitHub Pages (.github/workflows/release.yml).
-const DefaultAptRepo = "https://artemlavr.github.io/giocondo"
+const DefaultAptRepo = "https://lavr-art.github.io/giocondo"
 
 // AptRepoURL is the apt repository address for the agent install instructions.
 func (s *Service) AptRepoURL() string {

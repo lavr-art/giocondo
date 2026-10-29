@@ -4,8 +4,7 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26%2B-00ADD8.svg)](go.mod)
 
-A self-hosted control panel for personal [sing-box](https://sing-box.sagernet.org/) VPN nodes,
-a lightweight replacement for Hiddify Manager.
+A self-hosted control panel for personal [sing-box](https://sing-box.sagernet.org/) VPN nodes.
 
 The panel stores all state: users, terms, traffic limits, WireGuard keys, nodes and traffic history.
 A small agent on every node receives its config from the panel and runs sing-box. Users get one

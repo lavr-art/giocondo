@@ -348,11 +348,16 @@ caddy_site() {
   sub_backend=${sub_backend:-127.0.0.1:8081}
   case "$admin_backend" in :*|0.0.0.0:*|'[::]':*) admin_backend=127.0.0.1:${admin_backend##*:} ;; esac
   case "$sub_backend" in :*|0.0.0.0:*|'[::]':*) sub_backend=127.0.0.1:${sub_backend##*:} ;; esac
+  # Clients connecting by IP send no SNI, so Caddy would pick the certificate by the local address:
+  # that breaks the loopback check in wait_tls and clients behind provider NAT.
+  default_sni=
+  if [ "$MODE" = ip ]; then default_sni="
+	default_sni $IP"; fi
   cat <<EOF
 {
 	servers {
 		protocols h1 h2
-	}
+	}$default_sni
 }
 EOF
   if [ "$MODE" = ip ]; then

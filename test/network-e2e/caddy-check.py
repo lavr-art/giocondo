@@ -11,18 +11,21 @@ import time
 library = Path('/src/install.sh').read_text().rsplit('main "$@"', 1)[0]
 
 
-def generated_site(mode):
-    return subprocess.check_output(['sh', '-eu', '-c', library + f'\nMODE={mode} DOMAIN=localhost IP=127.0.0.1\ncaddy_site\n'],
+def generated_site(mode, ip):
+    return subprocess.check_output(['sh', '-eu', '-c', library + f'\nMODE={mode} DOMAIN=localhost IP={ip}\ncaddy_site\n'],
                                    text=True)
 
 
 def curl(cert, host, path):
+    # Like wait_tls: the request names the public host but connects through loopback.
     return subprocess.run(['curl', '-sS', '--max-time', '2', '--cacert', str(cert), '-o', '/dev/stdout',
+                           '--connect-to', f'{host}:8443:127.0.0.1:8443',
                            '-w', '\n%{http_code}', f'https://{host}:8443{path}'], capture_output=True, text=True)
 
 
 def check(mode, host):
-    site = generated_site(mode)
+    # A non-loopback IP: a connection without SNI must not depend on the local address matching the certificate.
+    site = generated_site(mode, host if mode == 'ip' else '127.0.0.1')
     if mode == 'ip':
         assert 'profile shortlived' in site, site
         # Replace the ACME issuer with a local fixture; matchers and backends stay as generated.
@@ -32,7 +35,7 @@ def check(mode, host):
         root = Path(tmp)
         cert, key = root / 'cert.pem', root / 'key.pem'
         subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
-                        '-subj', '/CN=localhost', '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1',
+                        '-subj', '/CN=localhost', '-addext', f'subjectAltName=DNS:localhost,IP:{host if mode == "ip" else "127.0.0.1"}',
                         '-keyout', str(key), '-out', str(cert)], check=True, capture_output=True)
         config = root / 'Caddyfile'
         fixture_site = site.replace('{\n', '{\n admin off\n auto_https disable_redirects\n', 1)
@@ -67,4 +70,4 @@ def check(mode, host):
 
 
 check('domain', 'localhost')
-check('ip', '127.0.0.1')
+check('ip', '192.0.2.10')

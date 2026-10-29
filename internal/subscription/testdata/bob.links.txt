@@ -1,0 +1,4 @@
+vless://e474d26c-e5d1-49fa-bc93-4fe0057196e7@n1.example.com:443?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=BlLfoNFcwbORwol0o9Xs21JjVvY8jUkNiiwDrqAOPkc&security=reality&sid=1fd1620d&sni=www.microsoft.com&type=tcp#n1%20%C2%B7%20Reality
+hysteria2://e474d26c-e5d1-49fa-bc93-4fe0057196e7@n1.example.com:8443?insecure=1&obfs=salamander&obfs-password=obfs-secret&pinSHA256=d2ddeabc30a3f3b545b4401616f97b67489bb2b582c63f7c211735e22cb5004e&sni=n1.example.com#n1%20%C2%B7%20Hysteria2
+vless://e474d26c-e5d1-49fa-bc93-4fe0057196e7@n2.example.com:443?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=Bg_oFZPP3KfODHisLfySzjPLzt7VQKr1TMKfQgiX6Ak&security=reality&sid=19d4eaf7&sni=www.apple.com&type=tcp#n2%20%C2%B7%20Reality
+hysteria2://e474d26c-e5d1-49fa-bc93-4fe0057196e7@n2.example.com:443?sni=n2.example.com#n2%20%C2%B7%20Hysteria2

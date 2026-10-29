@@ -1,0 +1,25 @@
+node:
+  id: t1
+  host: 203.0.113.10
+  inbounds:
+    - type: wireguard
+      tag: wg
+      port: 51820
+      wireguard:
+        private_key: dcRbjA0jHZmGtB+hy+nI96UR5BIqkbTwRkthOp4UdeI=
+        mtu: 1380
+users:
+  - name: alice
+    uuid: 12718a1d-581e-4ccf-9e5f-cf75e25baa90
+    wg:
+      private_key: ZjcOUwBJ4HMV6UASnzHvOwesjyhT3lSIVwMkryOU8yU=
+      public_key: goPBTkXUpxlDiNucRFtx2I6htTDjirll9OapUMB+HGY=
+      preshared_key: 5ecOwTpHHAQWeCRFL+HYu3urWvmhOkU4dr9Xr8qOJj8=
+      address: 10.70.0.2/32
+  - name: bob
+    uuid: 8da6b5af-eca5-4f6e-b4bc-b8fb65e8736c
+    wg:
+      private_key: Hv0aKhaLDvYpDWvloHBTuvluoSM2CcJnGZba2KJhDk0=
+      public_key: KN1jePyp7CnaL8K5PfslQjs6jGc9lpFMqWIwH2RLakM=
+      preshared_key: PQGlN/bHIMhzJluL73CmPkMOSlZdZl/+JV92xEaGkkE=
+      address: 10.70.0.3/32

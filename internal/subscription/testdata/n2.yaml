@@ -1,0 +1,34 @@
+node:
+  id: n2
+  host: n2.example.com
+  inbounds:
+    - type: vless-reality
+      tag: vless
+      port: 443
+      reality:
+        private_key: _TFCuBRgS6LHbXa5MOqBqZn_z3OTpX-p8gvmhhkeBbY
+        short_ids:
+          - 19d4eaf7
+        dest: www.apple.com:443
+        server_name: www.apple.com
+    - type: hysteria2
+      tag: hy2
+      port: 443
+      hysteria2:
+        tls: acme
+        acme_email: admin@example.com
+users:
+  - name: alice
+    uuid: 4102d004-05cf-4c09-a720-09fc68193cae
+    wg:
+      private_key: jnWjTuDySepBSvZikdpMeXC4Ql8AexWlaNVQ+BaYPZw=
+      public_key: +tmyz0bM/i0wHUHspF32wuLqVaPYbtxzl2k8VZxuCWg=
+      preshared_key: 7z44XzUXyG8NIlGVca7CMvNwi/oidoiexCCkscWv9aI=
+      address: 10.70.0.2/32
+  - name: bob
+    uuid: e474d26c-e5d1-49fa-bc93-4fe0057196e7
+    wg:
+      private_key: v3jdkGv5o4nZuvGpqJB6PHSYN7Z2Rh7NlHTAWfZB1gI=
+      public_key: /1RaVZjjy8YP6gLwrCcOhTZYBKvg3oP4D77Y1l2JICA=
+      preshared_key: 9AnE2jmXtU9hGhGdwpNFSb0kN0j114EWKJan8EtQZJg=
+      address: 10.70.0.3/32

@@ -1,0 +1,106 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "local",
+        "tag": "local"
+      }
+    ]
+  },
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg",
+      "system": false,
+      "mtu": 1380,
+      "address": [
+        "10.70.0.1/24"
+      ],
+      "private_key": "dcRbjA0jHZmGtB+hy+nI96UR5BIqkbTwRkthOp4UdeI=",
+      "listen_port": 51820,
+      "peers": [
+        {
+          "public_key": "goPBTkXUpxlDiNucRFtx2I6htTDjirll9OapUMB+HGY=",
+          "pre_shared_key": "5ecOwTpHHAQWeCRFL+HYu3urWvmhOkU4dr9Xr8qOJj8=",
+          "allowed_ips": [
+            "10.70.0.2/32"
+          ]
+        },
+        {
+          "public_key": "KN1jePyp7CnaL8K5PfslQjs6jGc9lpFMqWIwH2RLakM=",
+          "pre_shared_key": "PQGlN/bHIMhzJluL73CmPkMOSlZdZl/+JV92xEaGkkE=",
+          "allowed_ips": [
+            "10.70.0.3/32"
+          ]
+        }
+      ]
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "direct",
+      "tag": "wg-alice"
+    },
+    {
+      "type": "direct",
+      "tag": "wg-bob"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "resolve"
+      },
+      {
+        "ip_is_private": true,
+        "action": "reject"
+      },
+      {
+        "inbound": [
+          "wg"
+        ],
+        "source_ip_cidr": [
+          "10.70.0.2/32"
+        ],
+        "action": "route",
+        "outbound": "wg-alice"
+      },
+      {
+        "inbound": [
+          "wg"
+        ],
+        "source_ip_cidr": [
+          "10.70.0.3/32"
+        ],
+        "action": "route",
+        "outbound": "wg-bob"
+      }
+    ],
+    "final": "direct",
+    "default_domain_resolver": "local"
+  },
+  "experimental": {
+    "v2ray_api": {
+      "listen": "127.0.0.1:10085",
+      "stats": {
+        "enabled": true,
+        "outbounds": [
+          "wg-alice",
+          "wg-bob"
+        ],
+        "users": [
+          "alice",
+          "bob"
+        ]
+      }
+    }
+  }
+}

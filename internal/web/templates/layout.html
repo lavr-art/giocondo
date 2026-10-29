@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+<title>{{.Title}} · vpnctl</title>
+<link rel="stylesheet" href="{{base}}/static/style.css">
+<script src="{{base}}/static/htmx.min.js" defer></script>
+<script src="{{base}}/static/app.js" defer></script>
+</head>
+<body>
+{{if .Authed}}
+<header>
+  <span class="brand">vpnctl</span>
+  <nav>
+    <a href="{{base}}/users" {{if eq .Nav "users"}}class="on"{{end}}>Users</a>
+    <a href="{{base}}/nodes" {{if eq .Nav "nodes"}}class="on"{{end}}>Nodes</a>
+    <a href="{{base}}/tokens" {{if eq .Nav "tokens"}}class="on"{{end}}>API tokens</a>
+  </nav>
+  <form method="post" action="{{base}}/logout"><button class="small">Sign out</button></form>
+</header>
+{{end}}
+<main>
+{{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}
+{{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+{{template "content" .}}
+</main>
+</body>
+</html>

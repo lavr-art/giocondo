@@ -1,0 +1,45 @@
+ALTER TABLE nodes ADD COLUMN dns_record_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE nodes ADD COLUMN managed_dns BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE nodes ADD COLUMN active_installation BIGINT NOT NULL DEFAULT 0;
+CREATE TABLE node_installations (
+ id INTEGER PRIMARY KEY,
+ node_id BIGINT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+ identity TEXT NOT NULL UNIQUE,
+ ip TEXT NOT NULL,
+ state TEXT NOT NULL DEFAULT 'candidate',
+ last_seen TIMESTAMP,
+ applied_hash TEXT NOT NULL DEFAULT '',
+ apply_error TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE node_addresses (
+ id INTEGER PRIMARY KEY,
+ node_id BIGINT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+ installation_id BIGINT NOT NULL DEFAULT 0,
+ ip TEXT NOT NULL,
+ UNIQUE(node_id, ip)
+);
+CREATE TABLE node_probes (
+ node_id BIGINT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+ ip TEXT NOT NULL,
+ tag TEXT NOT NULL,
+ point TEXT NOT NULL,
+ error TEXT NOT NULL,
+ failures INTEGER NOT NULL DEFAULT 0,
+ checked_at TIMESTAMP NOT NULL,
+ PRIMARY KEY(node_id, ip, tag, point)
+);
+CREATE TABLE node_monitors (
+ node_id BIGINT PRIMARY KEY REFERENCES nodes(id) ON DELETE CASCADE,
+ credentials TEXT NOT NULL
+);
+CREATE TABLE network_operations (
+ id TEXT PRIMARY KEY,
+ node_id BIGINT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+ status TEXT NOT NULL,
+ started_at TIMESTAMP NOT NULL,
+ payload TEXT NOT NULL
+);
+CREATE TABLE network_locks (
+ node_id BIGINT PRIMARY KEY REFERENCES nodes(id) ON DELETE CASCADE,
+ operation_id TEXT NOT NULL
+);

@@ -1,0 +1,114 @@
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: warning
+ipv6: true
+geodata-mode: true
+geodata-loader: memconservative
+geo-auto-update: true
+geo-update-interval: 72
+geox-url:
+  geoip: https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat
+  geosite: https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat
+proxies:
+  - name: n1 · Reality
+    type: vless
+    server: n1.example.com
+    port: 443
+    udp: true
+    uuid: 4102d004-05cf-4c09-a720-09fc68193cae
+    network: tcp
+    tls: true
+    flow: xtls-rprx-vision
+    servername: www.microsoft.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: BlLfoNFcwbORwol0o9Xs21JjVvY8jUkNiiwDrqAOPkc
+      short-id: 1fd1620d
+  - name: n1 · Hysteria2
+    type: hysteria2
+    server: n1.example.com
+    port: 8443
+    udp: true
+    password: 4102d004-05cf-4c09-a720-09fc68193cae
+    sni: n1.example.com
+    skip-cert-verify: true
+    fingerprint: d2ddeabc30a3f3b545b4401616f97b67489bb2b582c63f7c211735e22cb5004e
+    alpn:
+      - h3
+    obfs: salamander
+    obfs-password: obfs-secret
+  - name: n1 · WireGuard
+    type: wireguard
+    server: n1.example.com
+    port: 51820
+    udp: true
+    ip: 10.70.0.2
+    private-key: jnWjTuDySepBSvZikdpMeXC4Ql8AexWlaNVQ+BaYPZw=
+    public-key: Fs/OIg83CS7Ilwdj4hdibmubwWnrqb0kv1r1BViKlwU=
+    pre-shared-key: 7z44XzUXyG8NIlGVca7CMvNwi/oidoiexCCkscWv9aI=
+    allowed-ips:
+      - 0.0.0.0/0
+      - ::/0
+    mtu: 1408
+  - name: n2 · Reality
+    type: vless
+    server: n2.example.com
+    port: 443
+    udp: true
+    uuid: 4102d004-05cf-4c09-a720-09fc68193cae
+    network: tcp
+    tls: true
+    flow: xtls-rprx-vision
+    servername: www.apple.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: Bg_oFZPP3KfODHisLfySzjPLzt7VQKr1TMKfQgiX6Ak
+      short-id: 19d4eaf7
+  - name: n2 · Hysteria2
+    type: hysteria2
+    server: n2.example.com
+    port: 443
+    udp: true
+    password: 4102d004-05cf-4c09-a720-09fc68193cae
+    sni: n2.example.com
+    alpn:
+      - h3
+proxy-groups:
+  - name: proxy
+    type: select
+    proxies:
+      - auto
+      - n1 · Reality
+      - n1 · Hysteria2
+      - n1 · WireGuard
+      - n2 · Reality
+      - n2 · Hysteria2
+  - name: auto
+    type: url-test
+    proxies:
+      - n1 · Reality
+      - n1 · Hysteria2
+      - n1 · WireGuard
+      - n2 · Reality
+      - n2 · Hysteria2
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+rules:
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+  - GEOSITE,ru-blocked,proxy
+  - GEOIP,ru-blocked,proxy,no-resolve
+  - DOMAIN-SUFFIX,ru,DIRECT
+  - DOMAIN-SUFFIX,su,DIRECT
+  - DOMAIN-SUFFIX,xn--p1ai,DIRECT
+  - GEOSITE,category-ru,DIRECT
+  - GEOSITE,ru-available-only-inside,DIRECT
+  - GEOIP,ru,DIRECT
+  - MATCH,proxy

@@ -1,0 +1,56 @@
+name: vpnctl-network-e2e
+x-base: &base
+  cap_add: [NET_ADMIN]
+  image: vpnctl-network-e2e
+  volumes:
+    - ../..:/src:ro
+    - ../../bin/network-e2e:/work
+services:
+  setup:
+    <<: *base
+    build: {context: ., dockerfile: Dockerfile}
+    command: [sh, /src/deploy/network-e2e/setup.sh]
+    networks: [test]
+  control:
+    <<: *base
+    command: [python3, /src/deploy/network-e2e/control.py]
+    networks:
+      test: {ipv4_address: 172.30.77.3, aliases: [control]}
+  panel:
+    <<: *base
+    environment:
+      PANEL_HEALTH_INTERVAL: ${PANEL_HEALTH_INTERVAL:-3s}
+    command: [sh, /src/deploy/network-e2e/panel.sh]
+    networks:
+      test: {ipv4_address: 172.30.77.2, aliases: [panel]}
+  node1:
+    <<: *base
+    privileged: true
+    cgroup: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    networks:
+      test: {ipv4_address: 172.30.77.11}
+  node2:
+    <<: *base
+    privileged: true
+    cgroup: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    networks:
+      test: {ipv4_address: 172.30.77.21}
+  client:
+    <<: *base
+    command: [sleep, infinity]
+    dns: [172.30.77.3]
+    networks:
+      test: {ipv4_address: 172.30.77.4}
+  probe:
+    <<: *base
+    command: [sh, /src/deploy/network-e2e/probe.sh]
+    networks:
+      test: {ipv4_address: 172.30.77.5, aliases: [probe]}
+networks:
+  test:
+    ipam:
+      config: [{subnet: 172.30.77.0/24}]

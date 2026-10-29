@@ -1,0 +1,68 @@
+# Release on a v* tag: GoReleaser builds the debs (vpnctl-agent, vpnctl-sing-box; amd64, arm64) and
+# a GitHub Release, then the packages are added to the apt repository on the gh-pages branch (GitHub Pages).
+# The APT_GPG_PRIVATE_KEY secret is the signing private key without a passphrase (docs/release.md).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: sing-box version
+        run: echo "SINGBOX_VERSION=$(cd build/sing-box && go list -m -f '{{.Version}}' github.com/sagernet/sing-box | sed 's/^v//')" >> "$GITHUB_ENV"
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: v2.19.0
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debs
+          path: dist/*.deb
+
+  apt:
+    needs: release
+    runs-on: ubuntu-latest
+    concurrency: gh-pages
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: debs
+          path: debs
+      - name: checkout gh-pages
+        run: |
+          if git fetch origin gh-pages; then
+            git worktree add site origin/gh-pages && git -C site switch -C gh-pages
+          else
+            git worktree add --orphan -b gh-pages site
+          fi
+      - name: import signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          printf '%s\n' "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')" >> "$GITHUB_ENV"
+      - run: sudo apt-get install -y --no-install-recommends apt-utils
+      - run: deploy/apt/update-repo.sh site "$KEY_ID" debs/*.deb
+      - name: publish
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "apt: ${GITHUB_REF_NAME}"
+          git push origin gh-pages

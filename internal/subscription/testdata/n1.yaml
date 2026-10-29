@@ -1,0 +1,56 @@
+node:
+  id: n1
+  host: n1.example.com
+  inbounds:
+    - type: vless-reality
+      tag: vless
+      port: 443
+      reality:
+        private_key: -lXdiVJK5a-znaQ5pZqF0qGDrQcQUnilt957p2QJ57Q
+        short_ids:
+          - 1fd1620d
+        dest: www.microsoft.com:443
+        server_name: www.microsoft.com
+    - type: hysteria2
+      tag: hy2
+      port: 8443
+      hysteria2:
+        cert_pem: |
+          -----BEGIN CERTIFICATE-----
+          MIIBgTCCASagAwIBAgIQEA6atD+2s0YbejFq4Y5HgDAKBggqhkjOPQQDAjAZMRcw
+          FQYDVQQDEw5uMS5leGFtcGxlLmNvbTAeFw0yNjEwMjgxNDU4MjFaFw0zNjEwMjgx
+          NTU4MjFaMBkxFzAVBgNVBAMTDm4xLmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYI
+          KoZIzj0DAQcDQgAEFkeSulgY/VJ7fum8kT8zMzTCcPCp/+/00QP67YPZ9SIkfItE
+          YWpM3sbeHEQn5M1yx0TfpxH/SjNa647cMW1sX6NQME4wDgYDVR0PAQH/BAQDAgeA
+          MBMGA1UdJQQMMAoGCCsGAQUFBwMBMAwGA1UdEwEB/wQCMAAwGQYDVR0RBBIwEIIO
+          bjEuZXhhbXBsZS5jb20wCgYIKoZIzj0EAwIDSQAwRgIhAPM/iYbU5Lh0sWILLyF9
+          0XVVTKyNCBeyQMRHk4QIzp/pAiEAx7Ua+Az2lyTd2Hye20+7fEK7RjosoT9UokNG
+          Q4WwIJU=
+          -----END CERTIFICATE-----
+        key_pem: |
+          -----BEGIN PRIVATE KEY-----
+          MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgDPBZzAMljo4gcUhW
+          KEahWRvN3z3hMgDhlRvDj5bxTsuhRANCAAQWR5K6WBj9Unt+6byRPzMzNMJw8Kn/
+          7/TRA/rtg9n1IiR8i0Rhakzext4cRCfkzXLHRN+nEf9KM1rrjtwxbWxf
+          -----END PRIVATE KEY-----
+        obfs_password: obfs-secret
+    - type: wireguard
+      tag: wg
+      port: 51820
+      wireguard:
+        private_key: NmbaQ3awtcg56h80Lh2nhj7w8Pz3urqEwK2KeGtJtA4=
+users:
+  - name: alice
+    uuid: 4102d004-05cf-4c09-a720-09fc68193cae
+    wg:
+      private_key: jnWjTuDySepBSvZikdpMeXC4Ql8AexWlaNVQ+BaYPZw=
+      public_key: +tmyz0bM/i0wHUHspF32wuLqVaPYbtxzl2k8VZxuCWg=
+      preshared_key: 7z44XzUXyG8NIlGVca7CMvNwi/oidoiexCCkscWv9aI=
+      address: 10.70.0.2/32
+  - name: bob
+    uuid: e474d26c-e5d1-49fa-bc93-4fe0057196e7
+    wg:
+      private_key: v3jdkGv5o4nZuvGpqJB6PHSYN7Z2Rh7NlHTAWfZB1gI=
+      public_key: /1RaVZjjy8YP6gLwrCcOhTZYBKvg3oP4D77Y1l2JICA=
+      preshared_key: 9AnE2jmXtU9hGhGdwpNFSb0kN0j114EWKJan8EtQZJg=
+      address: 10.70.0.3/32

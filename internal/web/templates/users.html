@@ -1,0 +1,17 @@
+{{define "content"}}
+<h1>Users</h1>
+<div class="card">
+  <form method="post" action="{{base}}/users" class="row">
+    <input type="text" name="name" placeholder="Name (Latin letters)" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}">
+    <label>Limit, GB <input type="number" name="limit_gb" class="narrow" min="0" step="any" placeholder="∞"></label>
+    <label>Term, days <input type="number" name="days" class="narrow" min="0" placeholder="∞"></label>
+    <button class="primary">Add</button>
+  </form>
+</div>
+{{if .Data.Users}}
+<table>
+  <thead><tr><th>Name</th><th>Status</th><th>Traffic</th><th>Until</th><th></th></tr></thead>
+  <tbody>{{range .Data.Users}}{{template "user_row" .}}{{end}}</tbody>
+</table>
+{{else}}<p class="muted">No users yet.</p>{{end}}
+{{end}}

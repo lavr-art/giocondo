@@ -1,0 +1,89 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "local",
+        "tag": "local"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "hysteria2",
+      "tag": "hy2",
+      "listen": "::",
+      "listen_port": 8443,
+      "up_mbps": 100,
+      "down_mbps": 200,
+      "obfs": {
+        "type": "salamander",
+        "password": "obfs-secret"
+      },
+      "users": [
+        {
+          "name": "alice",
+          "password": "29fef7a2-61bd-4496-86b4-6808da292057"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate": [
+          "-----BEGIN CERTIFICATE-----",
+          "MIIBczCCARigAwIBAgIQEszUegtwFumJcmQR/IX62jAKBggqhkjOPQQDAjAXMRUw",
+          "EwYDVQQDEwwyMDMuMC4xMTMuMTAwHhcNMjYxMDI3MjI1ODI2WhcNMzYxMDI3MjM1",
+          "ODI2WjAXMRUwEwYDVQQDEwwyMDMuMC4xMTMuMTAwWTATBgcqhkjOPQIBBggqhkjO",
+          "PQMBBwNCAAS9ZnBZsAoJe7h21b3UBeMawPgsL+m6dhHmM4MV8gkpzQdSz3tWmRSp",
+          "9DGMNgwWpMEbI95m/pIGs3Np/ZpZcDbco0YwRDAOBgNVHQ8BAf8EBAMCB4AwEwYD",
+          "VR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAPBgNVHREECDAGhwTLAHEK",
+          "MAoGCCqGSM49BAMCA0kAMEYCIQCMgxUIMZX41OIIk9CXS4M6Ze13IPtMNX0CTn3Y",
+          "8duUfQIhAJNL/hUPt6Z3JoIuv9RSdVgkfMaOPxCb7IgOXTugRii/",
+          "-----END CERTIFICATE-----"
+        ],
+        "key": [
+          "-----BEGIN PRIVATE KEY-----",
+          "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgJtcoUNnc8q/H+Jha",
+          "CzpQPIgKrvb3ByiH6igRGQI1wdqhRANCAAS9ZnBZsAoJe7h21b3UBeMawPgsL+m6",
+          "dhHmM4MV8gkpzQdSz3tWmRSp9DGMNgwWpMEbI95m/pIGs3Np/ZpZcDbc",
+          "-----END PRIVATE KEY-----"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "resolve"
+      },
+      {
+        "ip_is_private": true,
+        "action": "reject"
+      }
+    ],
+    "final": "direct",
+    "default_domain_resolver": "local"
+  },
+  "experimental": {
+    "v2ray_api": {
+      "listen": "127.0.0.1:10085",
+      "stats": {
+        "enabled": true,
+        "users": [
+          "alice"
+        ]
+      }
+    }
+  }
+}

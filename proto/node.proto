@@ -1,0 +1,82 @@
+// Agent -> panel link. The agent connects to the panel itself (mTLS, certificate CN = node name)
+// and holds one bidirectional Sync stream. The agent's first message is Hello.
+syntax = "proto3";
+
+package vpnctl.node.v1;
+option go_package = "github.com/artemlavr/giocondo/internal/nodeapi/pb";
+
+service NodeService {
+  rpc Sync(stream AgentMessage) returns (stream PanelMessage);
+}
+
+message AgentMessage {
+  oneof msg {
+    Hello hello = 1;
+    Health health = 2;
+    Stats stats = 3;
+    ApplyResult apply_result = 4;
+    ApplyResult network_result = 5;
+  }
+}
+
+message PanelMessage {
+  oneof msg {
+    ApplyConfig apply_config = 1;
+    StatsAck stats_ack = 2;
+    NetworkConfig network_config = 3;
+  }
+}
+
+message Hello {
+  string agent_version = 1;
+  string singbox_version = 2;
+  string config_hash = 3; // hex sha256 of the current config.json, empty means no config
+  string instance_id = 4; // random per agent start; together with Stats.seq it filters out repeats
+}
+
+message ApplyConfig {
+  bytes config_json = 1;
+  string hash = 2; // hex sha256(config_json)
+}
+
+message ApplyResult {
+  string hash = 1;
+  bool ok = 2;
+  string error = 3;
+}
+
+// Stats are traffic deltas accumulated since the last acknowledgement. The agent repeats the batch
+// with the same seq until it gets StatsAck; the panel does not record a seq already recorded for
+// this instance_id but acknowledges it.
+message Stats {
+  uint64 seq = 1;
+  repeated UserTraffic users = 2;
+}
+
+message UserTraffic {
+  string name = 1;
+  int64 up = 2;
+  int64 down = 3;
+}
+
+message StatsAck {
+  uint64 seq = 1;
+}
+
+message Health {
+  int64 uptime_seconds = 1;  // agent uptime
+  double load1 = 2;
+  int64 mem_total_bytes = 3;
+  int64 mem_available_bytes = 4;
+  int64 agent_rss_bytes = 5;
+  bool singbox_active = 6;
+  string config_hash = 7;
+}
+
+// UDP aliases are already assigned to the OS; the agent only maintains its own
+// DNAT chain so wildcard UDP listeners reply using the contacted public address.
+message NetworkConfig {
+  string primary_ip = 1;
+  repeated string aliases = 2;
+  repeated uint32 udp_ports = 3;
+}

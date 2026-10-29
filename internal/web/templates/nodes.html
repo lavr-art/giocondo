@@ -1,0 +1,43 @@
+{{define "content"}}
+<h1>Nodes</h1>
+{{if .Data.Nodes}}
+<table>
+  <thead><tr><th>Name</th><th>Address</th><th>Status</th><th>Last seen</th><th>Protocols</th></tr></thead>
+  <tbody>
+  {{range .Data.Nodes}}
+  <tr>
+    <td><a href="{{base}}/nodes/{{.ID}}">{{.Name}}</a>{{if .Region}} <span class="muted">{{.Region}}</span>{{end}}</td>
+    <td>{{.Host}}{{if and .IP (ne .IP .Host)}} <span class="muted">{{.IP}}</span>{{end}}</td>
+    <td><span class="badge {{.Status}}">{{status .Status}}</span>{{if .ApplyError}} <span class="badge expired">config error</span>{{else if .Dirty}} <span class="badge warn">config pending</span>{{end}}</td>
+    <td class="muted">{{ago .LastSeen}}</td>
+    <td>{{range .Inbounds}}{{proto .Type}} <span class="muted">:{{.Port}}</span><br>{{end}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">No nodes yet.</p>{{end}}
+
+<h2>Add a node</h2>
+<div class="card">
+  <form method="post" action="{{base}}/nodes">
+    <p class="row">
+      <input type="text" name="name" placeholder="Name, e.g. n1" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}">
+      <input type="text" name="host" placeholder="Domain or IP for clients" required>
+      <input type="text" name="ip" placeholder="IP (optional)">
+      <input type="text" name="region" placeholder="Region (optional)">
+    </p>
+    <p class="row"><label><input type="checkbox" name="vless" checked> VLESS Reality</label>
+      port <input type="number" name="vless_port" class="narrow" placeholder="443">
+      camouflage <input type="text" name="vless_dest" placeholder="www.microsoft.com:443"></p>
+    <p class="row"><label><input type="checkbox" name="hy2" checked> Hysteria2</label>
+      port <input type="number" name="hy2_port" class="narrow" placeholder="8443">
+      <label><input type="checkbox" name="hy2_obfs"> obfs</label>
+      <label><input type="checkbox" name="hy2_acme"> Let's Encrypt</label>
+      <input type="email" name="hy2_email" placeholder="email for Let's Encrypt"></p>
+    <p class="row"><label><input type="checkbox" name="wg" checked> WireGuard</label>
+      port <input type="number" name="wg_port" class="narrow" placeholder="51820"></p>
+    <button class="primary">Add</button>
+    <span class="muted">The panel generates keys and certificates itself.</span>
+  </form>
+</div>
+{{end}}

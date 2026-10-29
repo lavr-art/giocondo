@@ -1,0 +1,13 @@
+node:
+  id: t1
+  host: n1.example.com
+  inbounds:
+    - type: hysteria2
+      tag: hy2
+      port: 443
+      hysteria2:
+        tls: acme
+        acme_email: admin@example.com
+users:
+  - name: alice
+    uuid: 618ce402-4ab9-4ffc-a264-724836480a76

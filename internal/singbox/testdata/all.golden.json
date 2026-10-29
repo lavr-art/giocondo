@@ -1,0 +1,183 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "local",
+        "tag": "local"
+      }
+    ]
+  },
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg",
+      "system": false,
+      "mtu": 1408,
+      "address": [
+        "10.70.0.1/24"
+      ],
+      "private_key": "L0aI9Nf0aexyuIijV9tnHwAbL7JmnLyqV0xJrKrzosg=",
+      "listen_port": 51820,
+      "peers": [
+        {
+          "public_key": "vX4DlBylCS3kuNIwbLH4NNCFD81lkolJ99jxYD6DpzY=",
+          "pre_shared_key": "DjFy1aLID6OERrQbeJr94BkWiki/BvjCaZOtdDXYRUA=",
+          "allowed_ips": [
+            "10.70.0.2/32"
+          ]
+        },
+        {
+          "public_key": "SfFUSmPe+PcDiJapfJoRL9BTeOWnCjFfg0Jl+8jbQzQ=",
+          "pre_shared_key": "lmEKK5Qj7Bawnp0u6B2VmsgOyxKEOdkL/4xgsjoJlCQ=",
+          "allowed_ips": [
+            "10.70.0.3/32"
+          ]
+        }
+      ]
+    }
+  ],
+  "inbounds": [
+    {
+      "type": "vless",
+      "tag": "vless",
+      "listen": "::",
+      "listen_port": 443,
+      "users": [
+        {
+          "name": "artem",
+          "uuid": "e7570543-addf-4323-8727-6513bef4e629",
+          "flow": "xtls-rprx-vision"
+        },
+        {
+          "name": "test1",
+          "uuid": "3224bce1-8e50-41dd-aea6-44958f441932",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "www.microsoft.com",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "www.microsoft.com",
+            "server_port": 443
+          },
+          "private_key": "EWFxxixCz_R8o2XQ7Xmr3O5N-En7mtkK5nWo4Me8O0o",
+          "short_id": [
+            "73067d10"
+          ]
+        }
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "hy2",
+      "listen": "::",
+      "listen_port": 8443,
+      "users": [
+        {
+          "name": "artem",
+          "password": "e7570543-addf-4323-8727-6513bef4e629"
+        },
+        {
+          "name": "test1",
+          "password": "3224bce1-8e50-41dd-aea6-44958f441932"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate": [
+          "-----BEGIN CERTIFICATE-----",
+          "MIIBgTCCASagAwIBAgIQVbtKOgH+MGsQGhyjWtmfeTAKBggqhkjOPQQDAjAZMRcw",
+          "FQYDVQQDEw5uMS5leGFtcGxlLmNvbTAeFw0yNjEwMjcyMjU4MjZaFw0zNjEwMjcy",
+          "MzU4MjZaMBkxFzAVBgNVBAMTDm4xLmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYI",
+          "KoZIzj0DAQcDQgAE39LlmKhjEMFlmefIUxeqXKJelJNZeDjzU2PR4WKLVllzo1ow",
+          "YFj9gv4V33zGJccztxmY+xhA3hWVQpCheOjQ3aNQME4wDgYDVR0PAQH/BAQDAgeA",
+          "MBMGA1UdJQQMMAoGCCsGAQUFBwMBMAwGA1UdEwEB/wQCMAAwGQYDVR0RBBIwEIIO",
+          "bjEuZXhhbXBsZS5jb20wCgYIKoZIzj0EAwIDSQAwRgIhAL+lzkWB73zTRI6ybp/V",
+          "L8HVWr0Pfm1PzaR3cQqYk4wcAiEAlk2rqvgIzP7vQvIz0pQAd4LUXpaYe4AwAB4I",
+          "jcQKbyk=",
+          "-----END CERTIFICATE-----"
+        ],
+        "key": [
+          "-----BEGIN PRIVATE KEY-----",
+          "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQguMaW1SO+Zf+/42se",
+          "pwcgXjvnEchpPKKkct+CdkG5fzahRANCAATf0uWYqGMQwWWZ58hTF6pcol6Uk1l4",
+          "OPNTY9HhYotWWXOjWjBgWP2C/hXffMYlxzO3GZj7GEDeFZVCkKF46NDd",
+          "-----END PRIVATE KEY-----"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "direct",
+      "tag": "wg-artem"
+    },
+    {
+      "type": "direct",
+      "tag": "wg-test1"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "resolve"
+      },
+      {
+        "ip_is_private": true,
+        "action": "reject"
+      },
+      {
+        "inbound": [
+          "wg"
+        ],
+        "source_ip_cidr": [
+          "10.70.0.2/32"
+        ],
+        "action": "route",
+        "outbound": "wg-artem"
+      },
+      {
+        "inbound": [
+          "wg"
+        ],
+        "source_ip_cidr": [
+          "10.70.0.3/32"
+        ],
+        "action": "route",
+        "outbound": "wg-test1"
+      }
+    ],
+    "final": "direct",
+    "default_domain_resolver": "local"
+  },
+  "experimental": {
+    "v2ray_api": {
+      "listen": "127.0.0.1:10085",
+      "stats": {
+        "enabled": true,
+        "outbounds": [
+          "wg-artem",
+          "wg-test1"
+        ],
+        "users": [
+          "artem",
+          "test1"
+        ]
+      }
+    }
+  }
+}

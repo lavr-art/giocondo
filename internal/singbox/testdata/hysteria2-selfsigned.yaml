@@ -1,0 +1,31 @@
+node:
+  id: t1
+  host: 203.0.113.10
+  inbounds:
+    - type: hysteria2
+      tag: hy2
+      port: 8443
+      hysteria2:
+        cert_pem: |
+          -----BEGIN CERTIFICATE-----
+          MIIBczCCARigAwIBAgIQEszUegtwFumJcmQR/IX62jAKBggqhkjOPQQDAjAXMRUw
+          EwYDVQQDEwwyMDMuMC4xMTMuMTAwHhcNMjYxMDI3MjI1ODI2WhcNMzYxMDI3MjM1
+          ODI2WjAXMRUwEwYDVQQDEwwyMDMuMC4xMTMuMTAwWTATBgcqhkjOPQIBBggqhkjO
+          PQMBBwNCAAS9ZnBZsAoJe7h21b3UBeMawPgsL+m6dhHmM4MV8gkpzQdSz3tWmRSp
+          9DGMNgwWpMEbI95m/pIGs3Np/ZpZcDbco0YwRDAOBgNVHQ8BAf8EBAMCB4AwEwYD
+          VR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAPBgNVHREECDAGhwTLAHEK
+          MAoGCCqGSM49BAMCA0kAMEYCIQCMgxUIMZX41OIIk9CXS4M6Ze13IPtMNX0CTn3Y
+          8duUfQIhAJNL/hUPt6Z3JoIuv9RSdVgkfMaOPxCb7IgOXTugRii/
+          -----END CERTIFICATE-----
+        key_pem: |
+          -----BEGIN PRIVATE KEY-----
+          MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgJtcoUNnc8q/H+Jha
+          CzpQPIgKrvb3ByiH6igRGQI1wdqhRANCAAS9ZnBZsAoJe7h21b3UBeMawPgsL+m6
+          dhHmM4MV8gkpzQdSz3tWmRSp9DGMNgwWpMEbI95m/pIGs3Np/ZpZcDbc
+          -----END PRIVATE KEY-----
+        obfs_password: obfs-secret
+        up_mbps: 100
+        down_mbps: 200
+users:
+  - name: alice
+    uuid: 29fef7a2-61bd-4496-86b4-6808da292057

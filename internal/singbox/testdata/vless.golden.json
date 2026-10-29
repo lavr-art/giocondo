@@ -1,0 +1,80 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "local",
+        "tag": "local"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-reality-443",
+      "listen": "::",
+      "listen_port": 443,
+      "users": [
+        {
+          "name": "alice",
+          "uuid": "5ff90ebf-0d4c-40d1-b5ad-40b542baa0de",
+          "flow": "xtls-rprx-vision"
+        },
+        {
+          "name": "zed",
+          "uuid": "06c072b8-3c43-4f20-9692-c849ff750b32",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "www.microsoft.com",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "www.microsoft.com",
+            "server_port": 443
+          },
+          "private_key": "4IZU9zkvgKmM95cGir6C3IxUHhkK5WhYEo39PCwMtaM",
+          "short_id": [
+            "3a2bddf5"
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "resolve"
+      },
+      {
+        "ip_is_private": true,
+        "action": "reject"
+      }
+    ],
+    "final": "direct",
+    "default_domain_resolver": "local"
+  },
+  "experimental": {
+    "v2ray_api": {
+      "listen": "127.0.0.1:10085",
+      "stats": {
+        "enabled": true,
+        "users": [
+          "alice",
+          "zed"
+        ]
+      }
+    }
+  }
+}

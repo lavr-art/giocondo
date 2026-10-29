@@ -1,0 +1,42 @@
+{{define "content"}}
+<h1>API tokens</h1>
+{{with .Data.Created}}
+<div class="card">
+  <p>Token <b>{{.Name}}</b> ({{.Scope}}) created. Copy it now: it will not be shown again.</p>
+  <p class="row"><input type="text" id="new-token" value="{{$.Data.Secret}}" readonly>
+    <button type="button" data-copy="new-token">Copy</button></p>
+  <p class="muted">Request header: <code>Authorization: Bearer &lt;token&gt;</code>, API address: <code>{{base}}/api/…</code></p>
+</div>
+{{end}}
+{{if .Data.Tokens}}
+<table>
+  <thead><tr><th>Name</th><th>Scope</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+  <tbody>
+  {{range .Data.Tokens}}
+  <tr>
+    <td>{{.Name}}</td>
+    <td><span class="badge">{{.Scope}}</span></td>
+    <td class="muted">{{datetime .CreatedAt}}</td>
+    <td class="muted">{{ago .LastUsedAt}}</td>
+    <td><form method="post" action="{{base}}/tokens/{{.ID}}/delete" hx-boost="true" hx-confirm="Revoke token {{.Name}}? Requests with it will stop working."><button class="danger small">Revoke</button></form></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">No tokens yet: the REST API is unavailable.</p>{{end}}
+
+<h2>Issue a token</h2>
+<div class="card">
+  <form method="post" action="{{base}}/tokens">
+    <p class="row">
+      <input type="text" name="name" placeholder="Name, e.g. grafana" required maxlength="64">
+      <select name="scope">
+        <option value="monitor">monitor: read only</option>
+        <option value="node-sync">node-sync: read and nodes</option>
+        <option value="admin">admin: everything</option>
+      </select>
+      <button class="primary">Issue</button>
+    </p>
+  </form>
+</div>
+{{end}}

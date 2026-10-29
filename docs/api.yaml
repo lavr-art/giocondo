@@ -1,0 +1,555 @@
+openapi: 3.0.3
+info:
+  title: vpnctl panel API
+  version: "1"
+  description: |
+    Panel REST API. Every request carries the `Authorization: Bearer <token>` header. Tokens are created
+    in the web interface ("API tokens" section), with `panel token create` or through `/api/tokens`;
+    the token itself is shown once. Scopes: `monitor` is read only; `node-sync` is read plus
+    nodes, host overrides and agent certificates; `admin` is everything. A missing or invalid token gives 401,
+    an insufficient scope gives 403. The route scope is given in `x-scope`.
+    If `PANEL_ADMIN_PATH` is set, the API lives under it: `https://panel.example.com<PANEL_ADMIN_PATH>/api/...`.
+    Time is RFC 3339 in UTC, traffic is in bytes. Any change to users or nodes immediately
+    rebuilds the configs on connected nodes.
+servers:
+  - url: https://panel.example.com
+security:
+  - bearer: []
+paths:
+
+  /api/nodes/{id}/addresses:
+    get:
+      summary: Node IPv4 pool (monitor)
+      parameters: [{$ref: '#/components/parameters/ID'}]
+      responses:
+        '200': {description: Array of addresses}
+    post:
+      summary: Add an IPv4 assigned to the server (admin)
+      parameters: [{$ref: '#/components/parameters/ID'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ip]
+              properties:
+                ip: {type: string, format: ipv4}
+      responses:
+        '201': {description: Address added}
+        '409': {description: The address exists or an operation is running}
+  /api/nodes/{id}/addresses/{address}:
+    delete:
+      summary: Delete an inactive address from the pool (admin)
+      parameters:
+        - {$ref: '#/components/parameters/ID'}
+        - {in: path, name: address, required: true, schema: {type: integer}}
+      responses:
+        '204': {description: Address deleted}
+  /api/nodes/{id}/dns:
+    get:
+      summary: Preview of the switch to a domain (monitor)
+      parameters: [{$ref: '#/components/parameters/ID'}]
+      responses:
+        '200': {description: Current address and the proposed domain}
+    post:
+      summary: Enable managed Cloudflare DNS (admin)
+      parameters: [{$ref: '#/components/parameters/ID'}]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm: {type: boolean}
+      responses:
+        '200': {description: Node with a permanent domain}
+  /api/nodes/{id}/rotate-ip:
+    post:
+      summary: Switch the IP from the pool or move over SSH (admin)
+      parameters: [{$ref: '#/components/parameters/ID'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, ip]
+              properties:
+                mode: {type: string, enum: [existing_ip, ssh]}
+                ip: {type: string, format: ipv4}
+                ssh: {$ref: '#/components/schemas/SSHInput'}
+                source_ssh: {$ref: '#/components/schemas/SSHInput'}
+      responses:
+        '202': {description: 'Persistent operation with an ID for GET /api/jobs/{id}'}
+        '409': {description: An operation for this node is already running}
+  /api/jobs/{id}/{action}:
+    post:
+      summary: Retry completing the IP change or roll it back (admin)
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string}}
+        - {in: path, name: action, required: true, schema: {type: string, enum: [retry, rollback]}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source_ssh: {$ref: '#/components/schemas/SSHInput'}
+      responses:
+        '202': {description: A new operation that keeps the previous log}
+  /api/users:
+    get:
+      summary: List users
+      x-scope: monitor
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/User"}}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+    post:
+      summary: Create a user
+      x-scope: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateUser"}
+            example: {name: alice, traffic_limit_bytes: 107374182400, days: 30}
+      responses:
+        "201": {description: Created, content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/users/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      summary: User
+      x-scope: monitor
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      summary: Change the name, limit, term or enabled state
+      x-scope: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UpdateUser"}
+            example: {enabled: false}
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+    delete:
+      summary: Delete a user and their traffic
+      x-scope: admin
+      responses:
+        "204": {description: Deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/users/{id}/extend:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    post:
+      summary: Extend the term
+      x-scope: admin
+      description: The term is extended from the current one, or from now if it has already expired. With reset_traffic=true the used traffic is reset too.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [days]
+              properties:
+                days: {type: integer, minimum: 1, maximum: 3650}
+                reset_traffic: {type: boolean}
+            example: {days: 30, reset_traffic: true}
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/users/{id}/reset-traffic:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    post:
+      summary: Reset used traffic (history is kept)
+      x-scope: admin
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/users/{id}/rotate-token:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    post:
+      summary: New subscription link (the old one stops working)
+      x-scope: admin
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/nodes:
+    get:
+      summary: List nodes
+      x-scope: monitor
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Node"}}}}}
+    post:
+      summary: Add a node
+      x-scope: node-sync
+      description: A protocol is enabled if its object is passed. Keys and certificates are generated by the panel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateNode"}
+            example: {name: n1, host: n1.example.com, region: fsn1, vless_reality: {}, hysteria2: {obfs: true}, wireguard: {}}
+      responses:
+        "201": {description: Created, content: {application/json: {schema: {$ref: "#/components/schemas/Node"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/nodes/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      summary: Node
+      x-scope: monitor
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/Node"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      summary: Change the address, IP, region; disable or enable
+      x-scope: node-sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UpdateNode"}
+            example: {disabled: true}
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/Node"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      summary: Delete a node from the panel (the VPS at the provider is not touched)
+      x-scope: node-sync
+      responses:
+        "204": {description: Deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/nodes/{id}/agent-cert:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    post:
+      summary: Issue a node agent certificate (CN = node name)
+      x-scope: node-sync
+      description: Every call issues a new certificate. agent_key is a secret.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ca_crt: {type: string}
+                  agent_crt: {type: string}
+                  agent_key: {type: string}
+                  panel_addr: {type: string, description: value for AGENT_PANEL_ADDR}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/nodes/{id}/hosts:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      summary: Node host overrides
+      x-scope: monitor
+      description: Addresses clients receive in the subscription instead of the node host. If an inbound has at least one override, only overrides go into the subscription.
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Host"}}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      summary: Add an override to a node inbound
+      x-scope: node-sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HostInput"}
+            example: {inbound: vless, address: 203.0.113.10, sort: 1}
+      responses:
+        "201": {description: Created, content: {application/json: {schema: {$ref: "#/components/schemas/Host"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/hosts/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    put:
+      summary: Replace an override as a whole (the inbound does not change)
+      x-scope: node-sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HostInput"}
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/Host"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      summary: Delete an override
+      x-scope: node-sync
+      responses:
+        "204": {description: Deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/nodes/{id}/cloud-init:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    post:
+      summary: cloud-init user-data for a new server (a new node certificate every time)
+      x-scope: node-sync
+      description: |
+        Paste it into the user-data / cloud config field when creating a server at any cloud (Hetzner,
+        Vultr, DigitalOcean, …). On first boot it installs vpnctl-agent from apt, puts the certificate in place,
+        enables ufw with the node protocol ports; the node comes online by itself. Contains the node private key.
+      responses:
+        "200": {description: OK, content: {text/cloud-config: {schema: {type: string}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/nodes/{id}/provision-ssh:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    post:
+      summary: Install the agent on a server over SSH (in the background)
+      x-scope: node-sync
+      description: |
+        The panel connects with the panel key (GET /api/ssh-key) or with a key or password from the request; those
+        are used once and are not stored. Without host_key_sha256 the host key is accepted on first
+        connection and its fingerprint is written to the job log. After installation the panel key is removed from
+        authorized_keys unless keep_key is set. Progress is at GET /api/jobs/{job}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                host: {type: string, description: empty means the node IP or host}
+                port: {type: integer, description: 0 — 22}
+                user: {type: string, description: empty means root; a non-root user runs commands through sudo -n}
+                password: {type: string}
+                private_key: {type: string, description: OpenSSH/PEM}
+                host_key_sha256: {type: string, example: "SHA256:..."}
+                no_firewall: {type: boolean, description: do not enable ufw}
+                keep_key: {type: boolean, description: keep the panel key in authorized_keys}
+            example: {host: 203.0.113.10, password: "..."}
+      responses:
+        "202": {description: Job started, content: {application/json: {schema: {$ref: "#/components/schemas/Job"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/jobs/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    get:
+      summary: Installation job (kept in panel memory for an hour)
+      x-scope: node-sync
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/Job"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/ssh-key:
+    get:
+      summary: Panel public SSH key for authorized_keys
+      x-scope: monitor
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {type: object, properties: {authorized_key: {type: string, example: "ssh-ed25519 AAAA... vpnctl-panel"}}}
+  /api/tokens:
+    get:
+      summary: List API tokens (without the tokens themselves)
+      x-scope: admin
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Token"}}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      summary: Issue a token
+      x-scope: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scope]
+              properties:
+                name: {type: string, maxLength: 64}
+                scope: {type: string, enum: [monitor, node-sync, admin]}
+            example: {name: grafana, scope: monitor}
+      responses:
+        "201":
+          description: Created; the token field is the only time the token is visible
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/Token"}
+                  - {type: object, properties: {token: {type: string, example: vpc_...}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /api/tokens/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    delete:
+      summary: Revoke a token
+      x-scope: admin
+      responses:
+        "204": {description: Revoked}
+        "404": {$ref: "#/components/responses/NotFound"}
+components:
+  securitySchemes:
+    bearer: {type: http, scheme: bearer}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+  responses:
+    BadRequest: {description: Invalid input, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+    Unauthorized: {description: Missing or invalid token, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+    Forbidden: {description: Insufficient token scope, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+    NotFound: {description: Not found, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+    Conflict: {description: Name already taken, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+  schemas:
+    SSHInput:
+      type: object
+      properties:
+        host: {type: string}
+        port: {type: integer, default: 22}
+        user: {type: string, default: root}
+        password: {type: string, writeOnly: true}
+        private_key: {type: string, writeOnly: true}
+        host_key_sha256: {type: string}
+        keep_key: {type: boolean}
+    Job:
+      type: object
+      properties:
+        id: {type: string}
+        node_id: {type: integer}
+        kind: {type: string, enum: [ssh]}
+        status: {type: string, enum: [running, ok, failed]}
+        error: {type: string}
+        log: {type: string}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+    Token:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        scope: {type: string, enum: [monitor, node-sync, admin]}
+        created_at: {type: string, format: date-time}
+        last_used_at: {type: string, format: date-time, nullable: true, description: minute precision}
+    Error:
+      type: object
+      properties: {error: {type: string}}
+    User:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        status: {type: string, enum: [active, disabled, expired, limit]}
+        enabled: {type: boolean}
+        traffic_limit_bytes: {type: integer, description: 0 means no limit}
+        used_up_bytes: {type: integer}
+        used_down_bytes: {type: integer}
+        used_bytes: {type: integer}
+        expires_at: {type: string, format: date-time, nullable: true, description: null means no expiry}
+        created_at: {type: string, format: date-time}
+        subscription_url: {type: string}
+        has_wireguard: {type: boolean}
+        traffic_warning: {type: boolean, description: active and has used 80% of the limit}
+        expires_soon: {type: boolean, description: active and the term ends in less than 3 days}
+    CreateUser:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"}
+        traffic_limit_bytes: {type: integer, minimum: 0}
+        days: {type: integer, minimum: 0, description: term from now; not allowed together with expires_at}
+        expires_at: {type: string, format: date-time}
+    UpdateUser:
+      type: object
+      properties:
+        name: {type: string}
+        traffic_limit_bytes: {type: integer, minimum: 0}
+        expires_at: {type: string, format: date-time}
+        clear_expiry: {type: boolean, description: remove the expiry}
+        enabled: {type: boolean}
+    Node:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        host: {type: string}
+        ip: {type: string}
+        region: {type: string}
+        status: {type: string, enum: [new, online, offline, disabled]}
+        runtime: {type: string, enum: [remote, local], description: local means the agent is on the panel machine (panel local-node)}
+        dirty: {type: boolean, description: the node runs a different config than the panel built (pending or failed to apply)}
+        apply_error: {type: string, description: error of the last config apply on the node; empty means applied}
+        last_seen: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        inbounds:
+          type: array
+          items:
+            type: object
+            properties:
+              tag: {type: string}
+              type: {type: string, enum: [vless-reality, hysteria2, wireguard]}
+              port: {type: integer}
+        managed_dns: {type: boolean}
+        warning: {type: boolean, description: three consecutive client port failures}
+        agent_connected: {type: boolean}
+        addresses: {type: array, items: {type: object}}
+        probes: {type: array, items: {type: object}}
+        operations: {type: array, items: {type: object}}
+        hosts: {type: array, items: {$ref: "#/components/schemas/Host"}}
+    Host:
+      type: object
+      properties:
+        id: {type: integer}
+        inbound: {type: string, description: inbound tag}
+        type: {type: string, enum: [vless-reality, hysteria2, wireguard]}
+        address: {type: string}
+        port: {type: integer, description: 0 means the inbound port}
+        sni: {type: string}
+        path: {type: string}
+        sort: {type: integer}
+    HostInput:
+      type: object
+      required: [address]
+      properties:
+        inbound: {type: string, description: "inbound tag (vless, hy2, wg); ignored on PUT"}
+        address: {type: string, description: domain or IP}
+        port: {type: integer, minimum: 0, maximum: 65535, description: 0 means the inbound port}
+        sni: {type: string, description: "Hysteria2 only; Reality allows only the node server_name, WireGuard has no SNI"}
+        path: {type: string, description: for ws/grpc transports, unused by the current protocols}
+        sort: {type: integer, description: order in the subscription}
+    CreateNode:
+      type: object
+      required: [name, host]
+      properties:
+        name: {type: string, description: must match the agent certificate CN}
+        host: {type: string, description: domain or IP for clients}
+        ip: {type: string}
+        region: {type: string}
+        vless_reality:
+          type: object
+          properties:
+            port: {type: integer, default: 443}
+            dest: {type: string, default: "www.microsoft.com:443"}
+            server_name: {type: string, default: www.microsoft.com}
+        hysteria2:
+          type: object
+          properties:
+            port: {type: integer, default: 8443}
+            acme: {type: boolean, description: Let's Encrypt certificate; host must be a domain}
+            acme_email: {type: string}
+            obfs: {type: boolean, description: salamander with a random password}
+        wireguard:
+          type: object
+          properties:
+            port: {type: integer, default: 51820}
+    UpdateNode:
+      type: object
+      properties:
+        host: {type: string}
+        ip: {type: string}
+        region: {type: string}
+        disabled: {type: boolean}

@@ -1,0 +1,23 @@
+# Node agent: holds the Sync stream with the panel, writes /etc/vpnctl/sing-box/config.json,
+# restarts vpnctl-sing-box (hence it runs as root) and reports statistics.
+# Does not start without the node certificate: install-agent.sh puts it there from the panel archive.
+[Unit]
+Description=vpnctl node agent
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/vpnctl/agent/agent.crt
+
+[Service]
+EnvironmentFile=/etc/vpnctl/agent.env
+ExecStart=/usr/bin/vpnctl-agent
+Restart=always
+RestartSec=5
+MemoryMax=64M
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/vpnctl/sing-box
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

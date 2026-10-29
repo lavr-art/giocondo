@@ -1,0 +1,156 @@
+{{define "content"}}
+{{with .Data.Node}}
+<h1>{{.Name}} <span class="badge {{.Status}}">{{status .Status}}</span>{{if .Dirty}} <span class="badge warn">config pending</span>{{end}}{{if eq .Runtime "local"}} <span class="badge">on this machine</span>{{end}}</h1>
+{{if .ApplyError}}<div class="error">The node failed to apply the last config: {{.ApplyError}}</div>{{end}}
+<div class="card">
+  <p>Last contact with the agent: <b>{{ago .LastSeen}}</b> · added {{datetime .CreatedAt}}</p>
+  {{if .Dirty}}<p class="muted">The config on the node differs from the one built by the panel: it is applied when the agent is connected (at most once every 30 s).</p>{{end}}
+  <table>
+    <thead><tr><th>Protocol</th><th>Tag</th><th>Port</th></tr></thead>
+    <tbody>{{range .Inbounds}}<tr><td>{{proto .Type}}</td><td><code>{{.Tag}}</code></td><td>{{.Port}}</td></tr>{{end}}</tbody>
+  </table>
+</div>
+
+<h2>Availability and IP change</h2>
+<div class="card">
+  <p>Agent: {{if .AgentConnected}}connected{{else}}no recent contact{{end}}.
+  {{if .Warning}}<strong class="error">The port was unreachable in three checks in a row.</strong>{{end}}</p>
+  <p>Domain: <b>{{.Host}}</b> · active IP: <b>{{.IP}}</b></p>
+  {{if .Probes}}<table><thead><tr><th>IP</th><th>Protocol</th><th>Point</th><th>Check</th><th>Failures in a row</th></tr></thead><tbody>
+  {{range .Probes}}<tr><td>{{.IP}}</td><td>{{.Tag}}</td><td>{{.Point}}</td><td>{{if .Error}}{{.Error}}{{else}}reachable{{end}} · {{datetime .CheckedAt}}</td><td>{{.Failures}}</td></tr>{{end}}
+  </tbody></table>{{end}}
+  <h3>Address pool of this installation</h3>
+  {{range .Addresses}}<div class="row">{{.IP}}
+    {{if ne .IP $.Data.Node.IP}}<form method="post" action="{{base}}/nodes/{{.NodeID}}/rotate-ip"><input type="hidden" name="mode" value="existing_ip"><input type="hidden" name="ip" value="{{.IP}}"><button>Switch IP to {{.IP}}</button></form>
+    <form method="post" action="{{base}}/nodes/{{.NodeID}}/delete-address"><input type="hidden" name="address_id" value="{{.ID}}"><button class="small danger">Remove address</button></form>{{end}}
+  </div>{{end}}
+  <form method="post" action="{{base}}/nodes/{{.ID}}/add-address" class="row"><input name="ip" placeholder="IPv4 assigned to the server" required><button>Add IP</button></form>
+  {{if not .ManagedDNS}}{{with .DNSPreview}}<h3>Enable managed DNS</h3>
+  <p>{{.CurrentHost}} → {{.Host}} → {{.IP}} (TTL 60 seconds). After the switch, refresh the subscription once.</p>
+  <form method="post" action="{{base}}/nodes/{{$.Data.Node.ID}}/enable-dns"><label><input type="checkbox" name="confirm" required> I confirm the switch to this domain</label> <button>Enable DNS</button></form>
+  {{end}}{{end}}
+  {{if and .ManagedDNS (ne .Runtime "local")}}<details><summary>Move to another server over SSH</summary>
+  <form method="post" action="{{base}}/nodes/{{.ID}}/rotate-ip">
+    <input type="hidden" name="mode" value="ssh">
+    <p class="row"><input name="ip" placeholder="New public IPv4" required><input name="host" placeholder="SSH address (new IP by default)"><input name="port" type="number" placeholder="22"><input name="user" placeholder="root"></p>
+    <p><input name="password" type="password" placeholder="New server password" autocomplete="off"><input name="host_key" placeholder="SHA256: SSH fingerprint"></p>
+    <p><textarea name="private_key" rows="3" placeholder="New server SSH key"></textarea></p>
+    <p><label><input type="checkbox" name="keep_key"> Keep the panel deploy key</label></p>
+    <p>Access to the old server is needed for ACME and to disable the previous installation. The server itself is kept.</p>
+    <p class="row"><input name="source_host" placeholder="Old SSH address"><input name="source_user" placeholder="root"><input name="source_password" type="password" placeholder="Old server password" autocomplete="off"><input name="source_host_key" placeholder="SHA256: of the old server"></p>
+    <p><textarea name="source_key" rows="3" placeholder="Old server SSH key"></textarea></p>
+    <button>Move and change IP</button>
+  </form></details>{{end}}
+  {{range .Operations}}<details><summary>{{.Kind}} · {{.Status}} · {{.Stage}}</summary><pre>{{.Log}}</pre>{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+    {{if eq .Status "failed"}}<form method="post" action="{{base}}/jobs/{{.ID}}/retry"><input name="source_password" type="password" placeholder="Old server SSH password" autocomplete="off"><textarea name="source_key" rows="2" placeholder="or SSH key"></textarea><button>Retry completion</button></form>
+    <form method="post" action="{{base}}/jobs/{{.ID}}/rollback"><input name="source_password" type="password" placeholder="Old server SSH password" autocomplete="off"><textarea name="source_key" rows="2" placeholder="or SSH key"></textarea><button>Restore the previous IP</button></form>{{end}}
+  </details>{{end}}
+</div>
+
+<h2>Subscription addresses</h2>
+<div class="card">
+  <p class="muted">If a protocol has addresses here, clients get them (one server per address) instead of
+    "{{.Host}}": fallback IPs and domains, relays. The Reality SNI cannot be changed.</p>
+  {{if .Hosts}}
+  <table>
+    <thead><tr><th>Protocol</th><th>Address</th><th>Port</th><th>SNI</th><th>Order</th><th></th></tr></thead>
+    <tbody>
+    {{range .Hosts}}
+    <tr>
+      <td>{{proto .Type}}</td><td>{{.Address}}</td>
+      <td>{{if .Port}}{{.Port}}{{else}}<span class="muted">protocol default</span>{{end}}</td>
+      <td>{{if .SNI}}{{.SNI}}{{else}}<span class="muted">—</span>{{end}}</td><td>{{.Sort}}</td>
+      <td><form method="post" action="{{base}}/hosts/{{.ID}}/delete" hx-boost="true" hx-confirm="Remove {{.Address}} from the subscription?"><button class="small danger">Delete</button></form></td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+  <form method="post" action="{{base}}/nodes/{{.ID}}/hosts" class="row">
+    <select name="inbound">{{range .Inbounds}}<option value="{{.Tag}}">{{proto .Type}} ({{.Tag}})</option>{{end}}</select>
+    <input type="text" name="address" placeholder="Domain or IP" required>
+    <input type="number" name="port" class="narrow" placeholder="port">
+    <input type="text" name="sni" placeholder="SNI (Hysteria2)">
+    <input type="number" name="sort" class="narrow" placeholder="order" min="0">
+    <button>Add</button>
+  </form>
+</div>
+
+<h2>Address</h2>
+<div class="card">
+  <form method="post" action="{{base}}/nodes/{{.ID}}/update" class="row">
+    <label>Domain/IP for clients <input type="text" name="host" value="{{.Host}}" required></label>
+    <label>IP <input type="text" name="ip" value="{{.IP}}"></label>
+    <label>Region <input type="text" name="region" value="{{.Region}}"></label>
+    <button>Save</button>
+  </form>
+</div>
+
+<h2>Agent</h2>
+<div class="card">
+  {{if eq .Runtime "local"}}
+  <p>The agent runs on the panel machine and connects to it through 127.0.0.1. To reissue the certificate and
+     restart the agent, run on the panel machine as root:</p>
+  <pre>sudo vpnctl-panel local-node -name {{.Name}}</pre>
+  {{else}}
+  {{with $.Data.Job}}{{template "job" .}}{{end}}
+  <h3>New server: cloud-init</h3>
+  <p>When creating the server, paste the file into the user-data field: Hetzner "Cloud config", Vultr "Cloud-Init
+     User-Data", DigitalOcean "User data". On first boot the server installs the agent and ufw with the protocol
+     ports and comes online by itself. The file contains the node private key: the cloud shows user-data in its console.
+     Every download issues a new certificate.</p>
+  <form method="post" action="{{base}}/nodes/{{.ID}}/cloud-init"><button class="primary">Download user-data</button></form>
+
+  <h3>Your own server: over SSH</h3>
+  <form method="post" action="{{base}}/nodes/{{.ID}}/provision-ssh">
+    <p class="row">
+      <input type="text" name="host" placeholder="Address (default {{if .IP}}{{.IP}}{{else}}{{.Host}}{{end}})">
+      <input type="number" name="port" class="narrow" placeholder="22">
+      <input type="text" name="user" placeholder="root">
+      <input type="password" name="password" placeholder="Password" autocomplete="off">
+    </p>
+    <p><textarea name="private_key" class="code" rows="3" placeholder="or an OpenSSH private key (optional)"></textarea></p>
+    <p class="row">
+      <input type="text" name="host_key" placeholder="Host key fingerprint SHA256:… (optional)">
+      <label><input type="checkbox" name="firewall" checked> enable ufw (SSH and protocol ports)</label>
+      <label><input type="checkbox" name="remove_key" checked> remove the panel key after installation</label>
+    </p>
+    <button class="primary">Install</button>
+    <span class="muted">The password and key are used once and are not stored. Without a fingerprint the host key
+      is accepted on first connection and written to the log.</span>
+  </form>
+  {{if $.Data.DeployKey}}
+  <p class="muted">Instead of a password you can add the panel key to the server in advance (to <code>~/.ssh/authorized_keys</code>):</p>
+  <p class="row"><input type="text" id="deploy-key" value="{{$.Data.DeployKey}}" readonly>
+    <button type="button" data-copy="deploy-key">Copy</button></p>
+  {{end}}
+
+  <h3>Manual: archive</h3>
+  <p>Installation archive: node certificates, <code>install-agent.sh</code> and a README with the command. The agent and sing-box
+     are installed as deb packages from the apt repository. Every download issues a new certificate.</p>
+  <form method="post" action="{{base}}/nodes/{{.ID}}/bundle"><button class="primary">Download agent archive</button></form>
+  <pre>scp {{.Name}}-agent.tar.gz root@{{.Host}}:
+ssh root@{{.Host}}
+tar xzf {{.Name}}-agent.tar.gz &amp;&amp; cd {{.Name}}
+./install-agent.sh --panel {{if $.Data.AgentAddr}}{{$.Data.AgentAddr}}{{else}}&lt;panel&gt;:9443{{end}} --repo {{$.Data.AptRepo}}</pre>
+  {{end}}
+</div>
+
+<div class="row">
+  {{if eq .Status "disabled"}}
+  <form method="post" action="{{base}}/nodes/{{.ID}}/enable"><button>Enable</button></form>
+  {{else}}
+  <form method="post" action="{{base}}/nodes/{{.ID}}/disable"><button>Disable (remove from subscriptions)</button></form>
+  {{end}}
+  <form method="post" action="{{base}}/nodes/{{.ID}}/delete" hx-boost="true" hx-confirm="Delete node {{.Name}} from the panel? Its traffic history is deleted too."><button class="danger">Delete from panel</button></form>
+</div>
+{{end}}
+{{end}}
+
+{{define "job"}}
+<div id="job" class="card"{{if eq .Status "running"}} hx-get="{{base}}/jobs/{{.ID}}" hx-trigger="every 2s" hx-swap="outerHTML"{{end}}>
+  <p>Job {{.Kind}}: <span class="badge {{if eq .Status "ok"}}online{{else if eq .Status "failed"}}offline{{else}}new{{end}}">{{if eq .Status "ok"}}done{{else if eq .Status "failed"}}error{{else}}running…{{end}}</span>
+    {{if .Error}}<b>{{.Error}}</b>{{end}}</p>
+  <pre>{{.Log}}</pre>
+</div>
+{{end}}

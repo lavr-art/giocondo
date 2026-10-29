@@ -1,0 +1,26 @@
+# vpnctl panel: admin UI, API and subscriptions (HTTP behind a reverse proxy with HTTPS), gRPC for agents.
+# Runs as the vpnctl user; data in /var/lib/vpnctl/panel, settings in /etc/vpnctl/panel.env.
+# Does not start without the panel certificate: sudo -u vpnctl vpnctl-panel ca server -host <domain>,127.0.0.1
+[Unit]
+Description=vpnctl panel
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/vpnctl/panel/pki/server.crt
+
+[Service]
+User=vpnctl
+Group=vpnctl
+EnvironmentFile=/etc/vpnctl/panel.env
+ExecStart=/usr/bin/vpnctl-panel
+Restart=on-failure
+RestartSec=5
+StateDirectory=vpnctl/panel
+StateDirectoryMode=0750
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

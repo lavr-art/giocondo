@@ -1,0 +1,52 @@
+{{define "content"}}
+{{with .Data.User}}
+<h1>{{.Name}} <span class="badge {{.Status}}">{{status .Status}}</span></h1>
+<div class="card row">
+  <img class="qr" src="{{base}}/users/{{.ID}}/qr.png" alt="Subscription QR code">
+  <div class="grow">
+    <p><b>Subscription link</b>: add it to Hiddify, Happ, v2rayNG, sing-box or Clash.</p>
+    <p><input class="url" id="sub-url" type="text" readonly value="{{.SubscriptionURL}}"></p>
+    <p class="row"><button type="button" data-copy="sub-url">Copy</button>
+      <form class="inline" method="post" action="{{base}}/users/{{.ID}}/rotate-token" hx-boost="true" hx-confirm="Issue a new link? The old one will stop working for all clients."><button>New link</button></form>
+      <span class="muted">the old link will stop working</span></p>
+    <p>Traffic: <b>{{bytes .UsedBytes}}</b>{{if .TrafficLimitBytes}} of {{bytes .TrafficLimitBytes}}{{else}} (no limit){{end}}
+      · ↑ {{bytes .UsedUpBytes}} ↓ {{bytes .UsedDownBytes}}<br>
+      Term: <b>{{date .ExpiresAt}}</b> · created {{datetime .CreatedAt}}</p>
+  </div>
+</div>
+
+<h2>Manage</h2>
+<div class="card">
+  <form method="post" action="{{base}}/users/{{.ID}}/extend" class="row">
+    <label>Extend by <input type="number" name="days" class="narrow" min="1" value="30" required> days</label>
+    <label><input type="checkbox" name="reset_traffic"> and reset traffic</label>
+    <button {{if not .ExpiresAt}}disabled title="user without expiry"{{end}}>Extend</button>
+  </form>
+  <form method="post" action="{{base}}/users/{{.ID}}/expiry" class="row">
+    <label>Term until <input type="date" name="expires" value="{{if .ExpiresAt}}{{date .ExpiresAt}}{{end}}"></label>
+    <button>Save</button><span class="muted">empty means no expiry</span>
+  </form>
+  <form method="post" action="{{base}}/users/{{.ID}}/limit" class="row">
+    <label>Limit <input type="number" name="limit_gb" class="narrow" min="0" step="any" value="{{if .TrafficLimitBytes}}{{gb .TrafficLimitBytes}}{{end}}"> GB</label>
+    <button>Save</button><span class="muted">empty or 0 means no limit</span>
+  </form>
+  <div class="row">
+    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/reset-traffic"><button>Reset traffic</button></form>
+    {{if .Enabled}}
+    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/disable"><button>Disable</button></form>
+    {{else}}
+    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/enable"><button>Enable</button></form>
+    {{end}}
+    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/delete" hx-boost="true" hx-confirm="Delete {{.Name}}? The subscription will stop working."><button class="danger">Delete</button></form>
+  </div>
+</div>
+{{end}}
+
+{{if .Data.WGNodes}}
+<h2>WireGuard configs</h2>
+<div class="card">
+  <p class="muted">For clients without a subscription (the official WireGuard app).</p>
+  {{range .Data.WGNodes}}<a class="btn" href="{{base}}/users/{{$.Data.User.ID}}/wg/{{.ID}}">{{.Name}}.conf</a> {{end}}
+</div>
+{{end}}
+{{end}}

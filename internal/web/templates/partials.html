@@ -1,0 +1,30 @@
+{{define "user_row"}}
+<tr id="user-{{.ID}}">
+  <td><a href="{{base}}/users/{{.ID}}">{{.Name}}</a></td>
+  <td><span class="badge {{.Status}}">{{status .Status}}</span>{{if .TrafficWarning}} <span class="badge warn">80%</span>{{end}}{{if .ExpiresSoon}} <span class="badge warn">expiring</span>{{end}}</td>
+  <td>
+    {{bytes .UsedBytes}}{{if .TrafficLimitBytes}} / {{bytes .TrafficLimitBytes}}
+    <br><progress max="100" value="{{percent .UsedBytes .TrafficLimitBytes}}"></progress>{{else}} <span class="muted">no limit</span>{{end}}
+  </td>
+  <td>{{date .ExpiresAt}}</td>
+  <td><div class="row">
+    <form class="inline" hx-post="{{base}}/users/{{.ID}}/extend" hx-target="#user-{{.ID}}" hx-swap="outerHTML">
+      <input type="hidden" name="from" value="list"><input type="hidden" name="days" value="30">
+      <button class="small" {{if not .ExpiresAt}}disabled title="no expiry"{{end}}>+30 d</button>
+    </form>
+    {{if .Enabled}}
+    <form class="inline" hx-post="{{base}}/users/{{.ID}}/disable" hx-target="#user-{{.ID}}" hx-swap="outerHTML">
+      <input type="hidden" name="from" value="list"><button class="small">Disable</button>
+    </form>
+    {{else}}
+    <form class="inline" hx-post="{{base}}/users/{{.ID}}/enable" hx-target="#user-{{.ID}}" hx-swap="outerHTML">
+      <input type="hidden" name="from" value="list"><button class="small">Enable</button>
+    </form>
+    {{end}}
+    <form class="inline" hx-post="{{base}}/users/{{.ID}}/delete" hx-target="#user-{{.ID}}" hx-swap="delete"
+          hx-confirm="Delete {{.Name}}? Their subscription will stop working.">
+      <button class="small danger">Delete</button>
+    </form>
+  </div></td>
+</tr>
+{{end}}

@@ -44,6 +44,7 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/webhook/` | Panel event queue and delivery |
 | `proto/` | Source `.proto` files; generated with `make proto` |
 | `deploy/apt/` | Delivery via deb packages and the apt repository: deb scripts, systemd units, embedded agent installer, repository script |
+| `install.sh` | One-line server installer (panel + local node), published to GitHub Pages on release |
 | `test/network-e2e/` | Network Docker bench |
 | `build/sing-box/` | A separate Go module for our own core build |
 | `.github/workflows/` | CI and releases |
@@ -254,6 +255,7 @@ The current CI runs the Go tests and lint, while the external checks below run s
 | REST contract | `go test -count=1 ./internal/api` |
 | Agent dependencies | `go test -count=1 ./cmd/agent` |
 | DNS/IP, moving and node availability | `sh test/network-e2e/run.sh` in the isolated Docker bench |
+| `install.sh` | `sh test/network-e2e/run.sh installer` (clean container, traffic, idempotent second run) |
 | deb/release | `make deb`; requirements and signing are in `docs/release.md` |
 
 A plain green `go test ./...` does not prove that the external validators ran:

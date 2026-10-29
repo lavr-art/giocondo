@@ -39,6 +39,16 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     networks:
       test: {ipv4_address: 172.30.77.21}
+  installer:
+    <<: *base
+    privileged: true
+    cgroup: host
+    volumes:
+      - ../..:/src:ro
+      - ../../bin/network-e2e:/work
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    networks:
+      test: {ipv4_address: 172.30.77.31}
   client:
     <<: *base
     command: [sleep, infinity]

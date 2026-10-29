@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/artemlavr/giocondo/internal/admin"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pki"
@@ -32,8 +33,16 @@ func runLocalNode(args []string, stdout io.Writer, rt admin.Runtime) error {
 	protocols := fs.String("protocols", "vless,hysteria2,wireguard", "protocols for a new node")
 	grpcListen := fs.String("grpc", envOr("PANEL_GRPC_LISTEN", ":9443"), "panel gRPC listen address (PANEL_GRPC_LISTEN)")
 	restart := fs.Bool("restart", true, "enable and restart giocondo-vpn-agent via systemctl (false — e.g. in a container)")
+	check := fs.Bool("check", false, "wait for the existing local node to be ready (read-only)")
+	ports := fs.Bool("ports", false, "print existing local node firewall ports (read-only)")
+	agentCert := fs.String("agent-cert", "/etc/giocondo-vpn/agent/agent.crt", "installed agent certificate")
+	config := fs.String("config", "/etc/giocondo-vpn/sing-box/config.json", "installed sing-box config")
+	timeout := fs.Duration("timeout", 120*time.Second, "local node readiness timeout")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *check || *ports {
+		return inspectLocalNode(*db, *agentCert, *config, *name, *check, *timeout, stdout)
 	}
 	if l, ok := rt.(*admin.LocalRuntime); ok && !*restart {
 		l.RestartCmd = []string{}

@@ -6,14 +6,16 @@ python3 - <<'PY'
 import os, pathlib, shutil, subprocess
 root=pathlib.Path('/work/packages')
 arch=subprocess.check_output(['dpkg','--print-architecture'],text=True).strip()
-for pkg in ['agent','sing-box']:
+binaries={'panel':'usr/bin/giocondo-vpn-panel','agent':'usr/bin/giocondo-vpn-agent','sing-box':'usr/lib/giocondo-vpn/sing-box'}
+depends={'panel':'passwd','agent':'giocondo-vpn-sing-box'}
+for pkg in ['panel','agent','sing-box']:
  d=root/pkg
  if d.exists(): shutil.rmtree(d)
  (d/'DEBIAN').mkdir(parents=True)
- depends='Depends: giocondo-vpn-sing-box\n' if pkg=='agent' else ''
- (d/'DEBIAN/control').write_text(f'Package: giocondo-vpn-{pkg}\nVersion: 0.0.1~network7\nArchitecture: {arch}\nMaintainer: local test <test@example.invalid>\n{depends}Description: Local task 7 integration package\n')
- files=[(f'/work/{pkg}', 'usr/bin/giocondo-vpn-agent' if pkg=='agent' else 'usr/lib/giocondo-vpn/sing-box'),(f'/src/deploy/apt/systemd/giocondo-vpn-{pkg}.service',f'lib/systemd/system/giocondo-vpn-{pkg}.service')]
- if pkg=='agent': files.append(('/src/deploy/apt/deb/agent.env','usr/share/giocondo-vpn/agent.env.example'))
+ dep=f'Depends: {depends[pkg]}\n' if pkg in depends else ''
+ (d/'DEBIAN/control').write_text(f'Package: giocondo-vpn-{pkg}\nVersion: 0.0.1~network7\nArchitecture: {arch}\nMaintainer: local test <test@example.invalid>\n{dep}Description: Local task 7 integration package\n')
+ files=[(f'/work/{pkg}', binaries[pkg]),(f'/src/deploy/apt/systemd/giocondo-vpn-{pkg}.service',f'lib/systemd/system/giocondo-vpn-{pkg}.service')]
+ if pkg in ('panel','agent'): files.append((f'/src/deploy/apt/deb/{pkg}.env',f'usr/share/giocondo-vpn/{pkg}.env.example'))
  for source,dest in files:
   p=d/dest;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,p)
  shutil.copy2(f'/src/deploy/apt/deb/{pkg}-postinst.sh',d/'DEBIAN/postinst');os.chmod(d/'DEBIAN/postinst',0o755)
@@ -28,6 +30,7 @@ fi
 export GNUPGHOME=/work/gnupg
 KEY=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
 /src/deploy/apt/update-repo.sh /work/repo "$KEY" /work/packages/*_0.0.1~network7_*.deb
+cp /src/install.sh /work/repo/install.sh
 if [ ! -f /work/pki/ca.key ]; then /work/panel ca init -dir /work/pki; fi
 /work/panel ca server -dir /work/pki -host panel,control,probe,192.0.2.200,172.30.77.2,172.30.77.3,172.30.77.5
 printf 'setup complete\n'

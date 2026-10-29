@@ -50,6 +50,61 @@ apt-get update && apt-get install -y giocondo-vpn-agent
 Then put the node certificates into `/etc/giocondo-vpn/agent/{ca.crt,agent.crt,agent.key}`, set `AGENT_PANEL_ADDR` in
 `/etc/giocondo-vpn/agent.env` and run `systemctl restart giocondo-vpn-agent`. Updates: `apt-get upgrade`.
 
+## Quick install on a clean server
+
+`install.sh` is published as `https://lavr-art.github.io/giocondo/install.sh` with every release. It installs
+the panel and a node on the same Debian 11+/Ubuntu 22.04+ server (amd64/arm64) and can be run again safely: every step
+checks the current state. An unchanged repeat run preserves secrets, certificates and network settings and does not
+restart healthy services. Package upgrades may restart services through their package scripts.
+
+```
+bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh)                       # HTTPS by IP
+bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh) --domain vpn.example.com # HTTPS by domain
+bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh) --http                  # plain HTTP by IP
+```
+
+- Without a domain Caddy serves subscriptions at `https://<IP>:8443` with a Let's Encrypt IP certificate (shortlived
+  profile, about 6 days, renewed by Caddy). Port 80/tcp must be reachable from the internet for issuance and every
+  renewal. Caddy 2.10.2 or newer is required; distribution packages are older, so the official Caddy repository is
+  used. Only `/sub/*` and `/health/*` are proxied: the admin UI listens on `127.0.0.1:8080` only, open it with
+  `ssh -L 8080:127.0.0.1:8080 root@<IP>`. If the certificate is not issued within two minutes, the installation fails
+  and is rolled back; use `--http` where port 80 cannot be opened.
+- With `--http` subscriptions are plain HTTP at `http://<IP>:8081` (the token in the link is visible on the way);
+  the admin UI is local as above.
+- With `--domain` Caddy serves both at `https://<domain>:8443` with a Let's Encrypt certificate; port 80 must be reachable.
+- Port 443 stays with VLESS Reality, so Caddy uses only the HTTP-01 challenge for IP certificates. Caddy uses HTTP/1.1
+  and HTTP/2; HTTP/3 is disabled to leave UDP 8443 for Hysteria2.
+- The panel gRPC listens on `127.0.0.1:9443`: enough for the local node. Remote nodes need `PANEL_GRPC_LISTEN=:9443`
+  and a panel certificate that covers the public address.
+- Other options: `--ip A` (when the default route has a private address), `--version V`, `--repo URL`, `--yes`;
+  commands `status` and `uninstall [--purge]`.
+- The mode, HTTP/HTTPS URLs, listeners, gRPC and VPN ports of an existing installation are preserved when no flags are
+  given; an installation made before HTTPS by IP stays HTTP. Conflicting explicit addresses or modes are refused.
+  To change the public panel/subscription address or mode, use `--reconfigure --domain D`, `--reconfigure --ip A`
+  (HTTPS by IP) or `--reconfigure --http [--ip A]`; existing gRPC settings and client keys remain unchanged.
+  Switching to `--http` leaves an existing Caddy configuration in place.
+- Caddyfile replacement requires an unchanged package default or the saved checksum from this installer. Custom,
+  edited and legacy marker-only files are refused before panel settings change, with a site block for manual integration.
+  Validation/reload failures restore the previous configuration. `--yes` does not bypass this protection.
+- The installer prepares the CA bundle before HTTPS downloads, regardless of whether curl/wget already exists.
+- Success requires active panel/agent/sing-box services, a valid sing-box config and a fresh local agent heartbeat with
+  matching desired, applied and on-disk config hashes. `giocondo-vpn-panel local-node -check` waits up to 120 seconds
+  and reads the existing database without migrations. `-ports` reports the local node's actual firewall ports.
+  In HTTPS-by-IP mode it also requires a certificate for the IP that the system CAs trust (checked locally with
+  `curl --connect-to`). This verifies local readiness, not public reachability of the VPN ports or ACME issuance for
+  `--domain`. Incompatible pinned package
+  versions are refused before configuration changes. Invalid/partial agent credentials require explicit repair.
+- Failure on an existing installation restores the previous panel/Caddy configuration. If a first installation has
+  already created the local node credentials, it keeps the matching initial panel settings/certificates for a safe retry.
+- The admin path and password are in `/etc/giocondo-vpn/panel.env`; the script does not print them.
+
+The check is `sh test/network-e2e/run.sh installer`: a clean container, client traffic over VLESS and Hysteria2,
+an unchanged second run, recovery of a stopped agent (all in `--http` mode), and the generated domain and IP Caddy
+HTTPS proxies with a verified local certificate, including that the IP site does not expose the admin UI.
+Public ACME issuance by domain or IP needs a real reachable server and is checked separately.
+File preservation, reconfiguration, rollback and CA bootstrap regressions run with
+`python3 -m unittest discover -s test/installer -v` (also in CI); run `shellcheck install.sh` for shell lint.
+
 ## Panel from apt
 
 ```

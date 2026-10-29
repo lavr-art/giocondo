@@ -70,6 +70,24 @@ Homepage: https://github.com/lavr-art/giocondo
 Description: giocondo-vpn node agent: connects to the giocondo-vpn panel over gRPC/mTLS,
  applies sing-box config and reports per-user traffic.
 
+Package: giocondo-vpn-agent
+Architecture: arm64
+Version: 0.1.4
+Priority: optional
+Section: net
+Maintainer: lavr-art <lavr-art@users.noreply.github.com>
+Installed-Size: 10817
+Depends: giocondo-vpn-sing-box, iptables
+Filename: pool/main/giocondo-vpn-agent_0.1.4_arm64.deb
+Size: 4263210
+MD5sum: 1a89d5edd765663914252165662d86fd
+SHA1: 0e9a55e134c67168ec075af4d6ca9cc5e8ff05c3
+SHA256: 5dca1d8a899101652f572751b5ec40a2f329264fa05b651967e0b80e70596fbc
+SHA512: 504ce13ff545f49969b322473fc9c1e19b447980bf74a4dfd30dec842d382f212d7baa535fab0ea41e28a98f85004aa1650ca4dea38af0fa23806ee38193ad2f
+Homepage: https://github.com/lavr-art/giocondo
+Description: giocondo-vpn node agent: connects to the giocondo-vpn panel over gRPC/mTLS,
+ applies sing-box config and reports per-user traffic.
+
 Package: giocondo-vpn-panel
 Architecture: arm64
 Version: 0.1.0
@@ -146,6 +164,25 @@ Homepage: https://github.com/lavr-art/giocondo
 Description: giocondo-vpn panel: users, nodes, subscriptions, REST API and web interface.
  Install giocondo-vpn-agent too to use this machine as a node (giocondo-vpn-panel local-node).
 
+Package: giocondo-vpn-panel
+Architecture: arm64
+Version: 0.1.4
+Priority: optional
+Section: net
+Maintainer: lavr-art <lavr-art@users.noreply.github.com>
+Installed-Size: 17730
+Depends: passwd
+Recommends: giocondo-vpn-agent
+Filename: pool/main/giocondo-vpn-panel_0.1.4_arm64.deb
+Size: 7279614
+MD5sum: 8d02f471c5718bf34cdb357373776fae
+SHA1: 36c220d0e02194ed9976f0ba0a42c8bbc387fb63
+SHA256: 0298c4052ebdfa09462dc796352446f67b795e816cf1ae92d7e9145a1ebf1650
+SHA512: 719cca865f5e073dff0e53afb4d41b745f6180b2381cac64d26c06d4a8fafd2915796155ef4163780d9bc3f91eba7b2b9964e5964aaeb5bfbf2a207f289b56ba
+Homepage: https://github.com/lavr-art/giocondo
+Description: giocondo-vpn panel: users, nodes, subscriptions, REST API and web interface.
+ Install giocondo-vpn-agent too to use this machine as a node (giocondo-vpn-panel local-node).
+
 Package: giocondo-vpn-sing-box
 Architecture: arm64
 Version: 0.1.0
@@ -210,6 +247,23 @@ MD5sum: 4f08d18b0f988fcba86b77a2197e1919
 SHA1: 1a813ba2d883abd22018974c882c74419197cb34
 SHA256: 168d966105db9d3025544fdc96a33d8888958f21b9e59647db2ec133d034f5bd
 SHA512: 8506d4e5b5a9a54e55f8495a598142a0eaeed209ad25f51e9549786e055dbbc008d178594993716a5917b215ddf2948cc4f18700b53463b68ebf20d7db6ffc31
+Homepage: https://github.com/lavr-art/giocondo
+Description: sing-box 1.14.4 built with with_v2ray_api for giocondo-vpn nodes.
+ Managed by giocondo-vpn-agent; does not conflict with the official sing-box package.
+
+Package: giocondo-vpn-sing-box
+Architecture: arm64
+Version: 0.1.4
+Priority: optional
+Section: net
+Maintainer: lavr-art <lavr-art@users.noreply.github.com>
+Installed-Size: 73665
+Filename: pool/main/giocondo-vpn-sing-box_0.1.4_arm64.deb
+Size: 25262262
+MD5sum: 892205e0bb44dfb0d357152a86003e29
+SHA1: 8db1072fcdd7f5b9e6ed184fd54b8a62693bc209
+SHA256: 67cd875dd3eed991c7808fe978e64a6100a65712ab274934224c05dcdb7942cb
+SHA512: b19c91f6ea31d5490b98aa6959aad552ec4fd9a4f43cc0afbe01b2b06e2d01206cd8ca5ef74c783ef68471b957a9582361eb6c6f85eed035bb1258d9d3ca623a
 Homepage: https://github.com/lavr-art/giocondo
 Description: sing-box 1.14.4 built with with_v2ray_api for giocondo-vpn nodes.
  Managed by giocondo-vpn-agent; does not conflict with the official sing-box package.

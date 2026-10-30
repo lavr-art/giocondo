@@ -2,7 +2,7 @@
 # postinst giocondo-vpn-agent. The env file is created only if missing (not a conffile: a package
 # upgrade does not ask about the changed file). The agent starts only when the node certificate exists.
 set -e
-install -d -m 0700 /etc/giocondo-vpn/agent
+install -d -m 0700 /etc/giocondo-vpn/agent /var/lib/giocondo-vpn/agent
 if [ ! -f /etc/giocondo-vpn/agent.env ]; then
   install -m 0600 /usr/share/giocondo-vpn/agent.env.example /etc/giocondo-vpn/agent.env
 fi

@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -24,6 +25,8 @@ import (
 	"google.golang.org/grpc/keepalive"
 
 	"github.com/artemlavr/giocondo/internal/agent"
+	"github.com/artemlavr/giocondo/internal/agent/engine"
+	"github.com/artemlavr/giocondo/internal/agent/singboxdriver"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pb"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pki"
 	"github.com/artemlavr/giocondo/internal/nodeapi/v2raystats"
@@ -56,12 +59,13 @@ func main() {
 }
 
 type config struct {
-	panels                 []panelAddr
-	caFile, certFile, key  string
-	singBoxBin, configPath string
-	statsAddr              string
-	statsInterval          time.Duration
-	restartCmd, statusCmd  []string
+	panels                         []panelAddr
+	caFile, certFile, key          string
+	singBoxBin, configPath         string
+	statsAddr                      string
+	stateDir                       string
+	statsInterval                  time.Duration
+	restartCmd, statusCmd, stopCmd []string
 }
 
 // panelAddr is a panel address and the name its certificate must carry.
@@ -82,6 +86,8 @@ func loadConfig(getenv func(string) string) (config, error) {
 		key:        or("AGENT_KEY", "/etc/giocondo-vpn/agent/agent.key"),
 		singBoxBin: or("AGENT_SINGBOX_BIN", "/usr/lib/giocondo-vpn/sing-box"),
 		configPath: or("AGENT_SINGBOX_CONFIG", "/etc/giocondo-vpn/sing-box/config.json"),
+		stateDir:   or("AGENT_STATE_DIR", "/var/lib/giocondo-vpn/agent"),
+		stopCmd:    strings.Fields(or("AGENT_STOP_CMD", "systemctl stop giocondo-vpn-sing-box")),
 		statsAddr:  or("AGENT_STATS_ADDR", "127.0.0.1:10085"),
 		restartCmd: strings.Fields(or("AGENT_RESTART_CMD", "systemctl restart giocondo-vpn-sing-box")),
 		statusCmd:  strings.Fields(or("AGENT_STATUS_CMD", "systemctl is-active --quiet giocondo-vpn-sing-box")),
@@ -149,19 +155,22 @@ func run(ctx context.Context) error {
 	}
 	defer func() { _ = statsConn.Close() }()
 
-	a := &agent.Agent{
-		Panels: panels,
-		Applier: &agent.Applier{
-			SingBoxBin:  cfg.singBoxBin,
-			ConfigPath:  cfg.configPath,
-			RestartCmd:  cfg.restartCmd,
-			StatusCmd:   cfg.statusCmd,
-			SettleDelay: 3 * time.Second,
-		},
-		Collector:     &agent.Collector{Client: v2raystats.NewStatsServiceClient(statsConn)},
-		Version:       version,
-		StatsInterval: cfg.statsInterval,
+	lock, err := engine.Lock(cfg.stateDir)
+	if err != nil {
+		return fmt.Errorf("lock agent state: %w", err)
 	}
+	defer func() { _ = lock.Close() }()
+	runtime := &engine.Runtime{
+		Driver: &singboxdriver.Driver{Binary: cfg.singBoxBin, RestartCmd: cfg.restartCmd, StatusCmd: cfg.statusCmd, StopCmd: cfg.stopCmd,
+			Collector: &singboxdriver.Collector{Client: v2raystats.NewStatsServiceClient(statsConn)}},
+		ConfigPath: cfg.configPath, StateDir: filepath.Join(cfg.stateDir, "sing-box"), SettleDelay: 3 * time.Second,
+	}
+	engines, err := engine.NewManager(runtime)
+	if err != nil {
+		return err
+	}
+	a := &agent.Agent{Panels: panels, Engines: engines, Version: version, StatsInterval: cfg.statsInterval}
+
 	addrs := make([]string, len(cfg.panels))
 	for i, p := range cfg.panels {
 		addrs[i] = p.addr

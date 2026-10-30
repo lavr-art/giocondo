@@ -15,7 +15,9 @@ RestartSec=5
 MemoryMax=64M
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/etc/giocondo-vpn/sing-box
+StateDirectory=giocondo-vpn/agent
+StateDirectoryMode=0700
+ReadWritePaths=/etc/giocondo-vpn/sing-box /var/lib/giocondo-vpn/agent
 PrivateTmp=true
 NoNewPrivileges=true
 

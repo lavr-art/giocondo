@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io/fs"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -214,6 +216,28 @@ var _ Store = (*SQLite)(nil)
 
 // Open opens (or creates) the database and applies migrations.
 func Open(ctx context.Context, path string) (*SQLite, error) {
+	// Check existing databases read-only, before journal_mode or other connection pragmas can write.
+	if _, err := os.Stat(path); err == nil {
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			return nil, err
+		}
+		uri := url.URL{Scheme: "file", Path: absolute, RawQuery: "mode=ro"}
+		existing, err := sql.Open("sqlite", uri.String())
+		if err != nil {
+			return nil, err
+		}
+		err = (&SQLite{db: existing}).checkSchema(ctx)
+		closeErr := existing.Close()
+		if err != nil {
+			return nil, err
+		}
+		if closeErr != nil {
+			return nil, closeErr
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
 	q := url.Values{}
 	for _, p := range []string{"foreign_keys(1)", "journal_mode(WAL)", "busy_timeout(5000)", "synchronous(NORMAL)"} {
 		q.Add("_pragma", p)
@@ -235,18 +259,49 @@ func Open(ctx context.Context, path string) (*SQLite, error) {
 // Close closes the database.
 func (s *SQLite) Close() error { return s.db.Close() }
 
+func (s *SQLite) checkSchema(ctx context.Context) error {
+	names, err := fs.Glob(migrationsFS, "migrations/*.sql")
+	if err != nil {
+		return err
+	}
+	sort.Strings(names)
+	// Reject a newer application's database before executing any migration.
+	var tableExists int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations'`).Scan(&tableExists); err != nil {
+		return err
+	}
+	if tableExists != 0 {
+		var current int
+		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&current); err != nil {
+			return err
+		}
+		latest, _, _ := strings.Cut(strings.TrimPrefix(names[len(names)-1], "migrations/"), "_")
+		maximum, err := strconv.Atoi(latest)
+		if err != nil {
+			return err
+		}
+		if current > maximum {
+			return fmt.Errorf("database schema %d is newer than supported schema %d; restore matching packages and data", current, maximum)
+		}
+	}
+	return nil
+}
+
 func (s *SQLite) migrate(ctx context.Context) error {
+	names, err := fs.Glob(migrationsFS, "migrations/*.sql")
+	if err != nil {
+		return err
+	}
+	sort.Strings(names)
+	if err := s.checkSchema(ctx); err != nil {
+		return err
+	}
 	if _, err := s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
 		version    INTEGER PRIMARY KEY,
 		applied_at TIMESTAMP NOT NULL
 	)`); err != nil {
 		return fmt.Errorf("migrations table: %w", err)
 	}
-	names, err := fs.Glob(migrationsFS, "migrations/*.sql")
-	if err != nil {
-		return err
-	}
-	sort.Strings(names)
 	for _, name := range names {
 		base := strings.TrimPrefix(name, "migrations/")
 		num, _, _ := strings.Cut(base, "_")

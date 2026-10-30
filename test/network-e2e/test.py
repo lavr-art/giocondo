@@ -13,7 +13,7 @@ COMPOSE=['docker','compose','-f',str(ROOT/'test/network-e2e/compose.yaml')]
 REPORT=[]
 def run(*args,check=True):
  result=subprocess.run(COMPOSE+list(args),check=False,text=True,capture_output=True)
- if check and result.returncode:raise RuntimeError(result.stderr or result.stdout)
+ if check and result.returncode:raise RuntimeError(result.stdout+'\n'+result.stderr)
  return result
 def exec_(service,*args,check=True):return run('exec','-T',service,*args,check=check)
 def api(method,path,body=None):

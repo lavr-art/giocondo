@@ -9,14 +9,8 @@ esac
 ARCH=$(docker info --format '{{.Architecture}}')
 case "$ARCH" in aarch64|arm64) ARCH=arm64;;x86_64|amd64) ARCH=amd64;;*) echo 'Unsupported Docker architecture' >&2;exit 1;;esac
 mkdir -p bin/network-e2e
-GOOS=linux GOARCH="$ARCH" go build -o bin/network-e2e/panel ./cmd/panel
-GOOS=linux GOARCH="$ARCH" go build -o bin/network-e2e/agent ./cmd/agent
-if [ -n "${SINGBOX_BINARY:-}" ]; then
- cp "$SINGBOX_BINARY" bin/network-e2e/sing-box
-elif [ ! -x bin/network-e2e/sing-box ]; then
- make sing-box GOOS=linux GOARCH="$ARCH"
- cp "bin/sing-box-linux-$ARCH" bin/network-e2e/sing-box
-fi
+# Build with `make deb` first, or point CANDIDATE_DEBS at downloaded candidate artifacts.
+python3 test/network-e2e/prepare-packages.py "$ARCH" "${1:-test}"
 if [ "${1:-}" = fresh ]; then
  compose down --remove-orphans
  python3 - <<'PYRESET'
@@ -28,7 +22,7 @@ PYRESET
 fi
 compose build setup
 compose run --rm setup
-if [ "${1:-}" = installer ]; then
+if [ "${1:-}" = installer ] || [ "${1:-}" = upgrade ]; then
  # Clean server and clients: a prior run must not leave processes with old credentials.
  compose rm -sf installer client
  compose up -d control installer client
@@ -36,7 +30,11 @@ if [ "${1:-}" = installer ]; then
  for service in installer client; do
   compose exec -T "$service" ip route replace 192.0.2.200/32 via 172.30.77.3
  done
- python3 test/network-e2e/installer.py
+ if [ "${1:-}" = upgrade ]; then
+  python3 test/network-e2e/upgrade.py
+ else
+  python3 test/network-e2e/installer.py
+ fi
  exit
 fi
 compose up -d control panel node1 node2 client probe

@@ -37,9 +37,19 @@ var version = "dev"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
+	check := flag.Bool("check", false, "check local engine readiness without changing state")
+	pid := flag.Int("pid", 0, "running agent PID for -check")
 	flag.Parse()
 	if *showVersion {
 		fmt.Println(version)
+		return
+	}
+	if *check {
+		if err := checkAgent(*pid); err != nil {
+			fmt.Fprintln(os.Stderr, "agent readiness:", err)
+			os.Exit(1)
+		}
+		fmt.Println("local engine ready; panel synchronization is not confirmed by this check")
 		return
 	}
 

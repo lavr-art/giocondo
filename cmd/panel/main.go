@@ -83,6 +83,8 @@ func runSubcommand(args []string) (bool, error) {
 		return false, nil
 	}
 	switch args[0] {
+	case "check":
+		return true, runCheck(args[1:])
 	case "probe":
 		return true, runProbe(args[1:])
 	case "ca":

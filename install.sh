@@ -9,6 +9,7 @@
 #   --domain D    HTTPS through Caddy (Let's Encrypt) at https://D:8443; port 80 must be reachable
 #   --ip A        public IPv4 of the server (default: source address of the default route)
 #   --http        serve subscriptions over plain HTTP at http://IP:8081 instead of HTTPS by IP
+#   --allow-breaking-upgrade explicitly allow a new compatibility branch
 #   --version V   install exactly this package version
 #   --repo URL    apt repository (default: https://lavr-art.github.io/giocondo)
 #   --reconfigure explicitly change an existing public address / HTTP or HTTPS mode
@@ -16,7 +17,7 @@
 #
 # Without --domain subscriptions are served at https://IP:8443 with a short-lived Let's Encrypt IP certificate
 # (port 80 must stay reachable for renewal) and the admin UI listens on 127.0.0.1 only (open it through an SSH tunnel).
-# Every step checks the current state first, so running the script again changes nothing.
+# Repeat runs preserve existing state; available APT package updates are installed.
 set -eu
 
 REPO=https://lavr-art.github.io/giocondo
@@ -40,7 +41,7 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 usage() {
   cat <<'EOF'
-usage: install.sh [install] [--domain D | --http] [--ip A] [--reconfigure] [--version V] [--repo URL] [--yes]
+usage: install.sh [install] [--domain D | --http] [--ip A] [--reconfigure] [--version V] [--allow-breaking-upgrade] [--repo URL] [--yes]
        install.sh status
        install.sh uninstall [--purge] [--yes]
 EOF
@@ -405,6 +406,25 @@ start_panel() {
     [ "$i" -le 15 ] || die "the panel did not start: journalctl -u giocondo-vpn-panel"
     sleep 1
   done
+  # Do not open SQLite from the root readiness CLI before the service has opened
+  # its WAL. Otherwise the read-only CLI can create root-owned WAL/SHM files first.
+  ready_addr=$(read_env PANEL_SUB_LISTEN)
+  ready_addr=${ready_addr:-127.0.0.1:8081}
+  case "$ready_addr" in :*|0.0.0.0:*|'[::]':*) ready_addr=127.0.0.1:${ready_addr##*:} ;; esac
+  ready_challenge=$(openssl rand -hex 32)
+  ready_url="http://$ready_addr/health/challenge?challenge=$ready_challenge"
+  i=0
+  while :; do
+    if command -v curl >/dev/null 2>&1; then
+      ready_body=$(curl -fsS --max-time 2 "$ready_url" 2>/dev/null || true)
+    else
+      ready_body=$(wget -qO- -T 2 "$ready_url" 2>/dev/null || true)
+    fi
+    [ "$ready_body" != "$ready_challenge" ] || break
+    i=$((i+1))
+    [ "$i" -lt 30 ] || die "panel HTTP is not ready: journalctl -u giocondo-vpn-panel"
+    sleep 1
+  done
 }
 
 setup_node() {
@@ -628,6 +648,7 @@ main() {
       --ip) IP=${2:?--ip needs a value}; IP_SET=1; shift 2 ;;
       --http) HTTP_SET=1; shift ;;
       --reconfigure) RECONFIGURE=1; shift ;;
+      --allow-breaking-upgrade) export GIOCONDO_ALLOW_BREAKING_UPGRADE=1; shift ;;
       --version) PKG_VERSION=${2:?--version needs a value}; shift 2 ;;
       --repo) REPO=${2%/}; shift 2 ;;
       --yes|-y) YES=1; shift ;;

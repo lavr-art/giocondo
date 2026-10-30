@@ -72,6 +72,16 @@ DOMAIN=vpn.example.com IP=192.0.2.1 MODE=domain RECONFIGURE=0 EXISTING=1 PANEL_C
         self.shell('DOMAIN=; configure_panel')
         self.assertEqual(self.env.read_text(), content)
 
+    def test_start_panel_requires_http_readiness_before_database_inspection(self):
+        self.env.write_text('PANEL_SUB_LISTEN=0.0.0.0:8081\n')
+        seen = self.base / 'http-checked'
+        self.stub('curl', f'''for arg in "$@"; do url=$arg; done
+printf '%s' "$url" > {shlex.quote(str(seen))}
+printf '%s' "${{url##*=}}"''')
+        self.shell('start_panel')
+        self.assertTrue(seen.exists(), 'service activity alone does not establish database readiness')
+        self.assertTrue(seen.read_text().startswith('http://127.0.0.1:8081/health/challenge?challenge='))
+
     def test_reconfigure_preserves_grpc(self):
         self.env.write_text('PANEL_GRPC_LISTEN=:9555\nPANEL_LISTEN=127.0.0.1:8080\n')
         self.shell('RECONFIGURE=1; configure_panel')

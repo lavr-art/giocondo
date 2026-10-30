@@ -3,6 +3,7 @@
 # random secrets (first install only), a private CA. The panel starts once the server
 # certificate exists (ConditionPathExists in the unit).
 set -e
+[ -z "${GIOCONDO_RESTORE_FROM:-}" ] || exit 0
 STATE=/var/lib/giocondo-vpn/panel
 ENV=/etc/giocondo-vpn/panel.env
 
@@ -33,11 +34,13 @@ if [ ! -f "$STATE/pki/ca.crt" ]; then
   as_service_user /usr/bin/giocondo-vpn-panel ca init -dir "$STATE/pki"
 fi
 
+REQUIRE_READY=0
 if [ -d /run/systemd/system ]; then
   systemctl daemon-reload
   systemctl enable giocondo-vpn-panel.service >/dev/null 2>&1 || true
-  if [ -f "$STATE/pki/server.crt" ]; then
-    systemctl restart giocondo-vpn-panel.service || true
+  if [ -f "$STATE/pki/server.crt" ] || systemctl is-active --quiet giocondo-vpn-panel.service; then
+    REQUIRE_READY=1
+    systemctl restart giocondo-vpn-panel.service
   fi
 fi
 
@@ -54,3 +57,5 @@ Next steps:
 
 MSG
 fi
+
+GIOCONDO_REQUIRE_READY="$REQUIRE_READY" /usr/share/giocondo-vpn/panel/postflight.sh panel

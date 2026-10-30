@@ -6,7 +6,7 @@
 
 A self-hosted control panel for personal [sing-box](https://sing-box.sagernet.org/) VPN nodes.
 
-The panel stores all state: users, terms, traffic limits, WireGuard keys, nodes and traffic history.
+The panel stores all state: users, subscription terms, traffic limits, protocol credentials, nodes and traffic history.
 A small agent on every node receives its config from the panel and manages sing-box through an engine
 driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box and Mihomo/Clash clients.
 
@@ -73,7 +73,9 @@ bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh) --http
 The IP certificate lives about 6 days and Caddy renews it, so port 80/tcp must stay open. If the certificate
 is not issued, the installation fails and is rolled back.
 
-The installer is idempotent: running it again changes nothing that is already in place.
+The installer preserves settings and keys on repeat runs; available package updates are installed.
+Running the same version again does not restart healthy services. See [controlled upgrades and recovery](docs/upgrades.md)
+for backups, compatibility, explicit breaking-version opt-in and manual recovery.
 
 Open the admin UI:
 
@@ -94,6 +96,7 @@ install.sh uninstall [--purge]
 install.sh --ip A            # public IPv4 when the default route has a private address
 install.sh --http            # plain HTTP subscriptions instead of HTTPS by IP
 install.sh --version V       # pin the package version
+install.sh --allow-breaking-upgrade --yes  # explicitly allow a new compatibility branch
 install.sh --reconfigure --domain D | --ip A | --http   # change the public address or mode
 install.sh --yes             # non-interactive
 ```
@@ -225,8 +228,10 @@ MIHOMO_CHECK=1 go test -count=1 ./internal/subscription   # requires mihomo in P
 End-to-end network tests run in an isolated Docker bench (never on real nodes):
 
 ```sh
+make deb                              # real release packages used by the bench
 sh test/network-e2e/run.sh              # DNS/IP operations, node availability
 sh test/network-e2e/run.sh installer    # install.sh on a clean container
+sh test/network-e2e/run.sh upgrade      # previous stable -> candidate and manual recovery
 ```
 
 ## Releases

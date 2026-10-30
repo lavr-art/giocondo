@@ -22,7 +22,6 @@ jobs:
         run: |
           sh -n install.sh
           for script in deploy/apt/deb/*.sh deploy/apt/recover.sh; do sh -n "$script"; done
-          python3 -m unittest discover -s test/installer -v
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.15.0

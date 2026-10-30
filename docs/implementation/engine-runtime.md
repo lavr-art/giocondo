@@ -126,7 +126,7 @@ interruption tests exercise process crashes, not physical power loss.
 
 For the isolated legacy-agent upgrade check, build a baseline Linux agent from
 an earlier checkout into `bin/network-e2e/agent-legacy`, run the network bench,
-then run `python3 test/network-e2e/agent-upgrade.py`. The check replaces binaries
+then run `sh test/network-e2e/run.sh agent-upgrade`. The check replaces binaries
 only inside the bench node, archives its existing runtime journal to simulate a
 pre-runtime installation, and verifies unchanged client configurations, real
 traffic and an unchanged sing-box process. It limits that container to 1 CPU /

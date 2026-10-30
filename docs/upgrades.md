@@ -128,4 +128,8 @@ BASELINE_VERSION=v0.1.4 UPGRADE_PATH=apt sh test/network-e2e/run.sh upgrade
 Without `BASELINE_VERSION`, the upgrade runner downloads the latest published non-prerelease/non-draft release.
 `CANDIDATE_DEBS` overrides the candidate directory (default `dist`); its `SHA256SUMS` is required.
 The bench verifies checksums and uses real GoReleaser packages and all three client protocols.
+The runner builds a Go helper for the host and Docker architecture, and launches
+explicit Go tests under the `e2e` build tag. Neither setup nor the container checks
+require Python. `go test ./...` includes installer and recovery regressions but
+does not launch Docker or download a baseline release.
 Public ACME issuance and external routing still require separate tests on a reachable server.

@@ -13,7 +13,7 @@ services:
     networks: [test]
   control:
     <<: *base
-    command: [python3, /src/test/network-e2e/control.py]
+    command: [/work/bench, control]
     networks:
       test: {ipv4_address: 172.30.77.3, aliases: [control]}
   panel:

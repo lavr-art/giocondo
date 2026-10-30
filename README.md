@@ -218,6 +218,10 @@ go test ./...
 go test -race ./...
 ```
 
+Installer and package-hook regressions are included in these commands; to run them
+alone, use `go test -count=1 -v ./test/installer`. Debian package-hook checks require
+Linux with `dpkg` and GNU tar/coreutils and are explicitly skipped on other systems.
+
 Some tests validate generated configs with external binaries and are skipped when they are missing:
 
 ```sh
@@ -233,6 +237,24 @@ sh test/network-e2e/run.sh              # DNS/IP operations, node availability
 sh test/network-e2e/run.sh installer    # install.sh on a clean container
 sh test/network-e2e/run.sh upgrade      # previous stable -> candidate and manual recovery
 ```
+
+The bench uses Go test scenarios behind the `e2e` build tag and a Go helper built
+for the host and Docker architecture. Go runs on the host; the containers need
+neither Go nor Python. Ordinary `go test ./...` does not start Docker or fetch
+baseline packages. See [upgrade verification](docs/upgrades.md#release-verification)
+for candidate and baseline package selection.
+
+After a successful network run, these checks continue the existing bench:
+
+```sh
+# Supply an earlier Linux agent at bin/network-e2e/agent-legacy first.
+sh test/network-e2e/run.sh agent-upgrade
+PANEL_HEALTH_INTERVAL=5m sh test/network-e2e/run.sh cadence
+```
+
+The cadence check takes about 13 minutes. `run.sh fresh` archives the previous
+network state and results before starting over; `logs` and `down` inspect and stop
+the bench. Reports remain under `bin/network-e2e/`.
 
 ## Releases
 

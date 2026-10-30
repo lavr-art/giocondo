@@ -1,13 +1,9 @@
 #!/bin/sh
 set -eu
 # Use the exact GoReleaser artifacts under test, never synthetic packages.
-python3 /src/test/network-e2e/unpack-packages.py
+/work/bench unpack-packages
 # A prior candidate must never win APT's version selection in a subsequent run.
-python3 - <<'PYCLEAN'
-import shutil
-for name in ('repo', 'baseline-repo'):
- shutil.rmtree('/work/' + name, ignore_errors=True)
-PYCLEAN
+rm -rf /work/repo /work/baseline-repo
 # gpg-agent cannot keep its sockets on the host bind mount (/work); with /run/user/0 present GnuPG puts them there.
 mkdir -p -m 700 /run/user/0
 if [ ! -d /work/gnupg ]; then

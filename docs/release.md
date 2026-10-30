@@ -108,7 +108,10 @@ an unchanged second run, recovery of a stopped agent (all in `--http` mode), and
 HTTPS proxies with a verified local certificate, including that the IP site does not expose the admin UI.
 Public ACME issuance by domain or IP needs a real reachable server and is checked separately.
 File preservation, reconfiguration, rollback and CA bootstrap regressions run with
-`python3 -m unittest discover -s test/installer -v` (also in CI); run `shellcheck install.sh` for shell lint.
+`go test -count=1 -v ./test/installer` (included in the ordinary Go suite and CI);
+Debian package-hook regressions run on Linux with GNU tar/coreutils and `dpkg`.
+Run `shellcheck install.sh` for shell lint. Network scenarios are opt-in Go tests
+under the `e2e` build tag, launched by `run.sh`; the bench has no Python dependency.
 
 ## Panel from apt
 

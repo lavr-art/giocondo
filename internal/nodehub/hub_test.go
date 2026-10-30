@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/artemlavr/giocondo/internal/agent"
+	"github.com/artemlavr/giocondo/internal/agent/engine"
+	"github.com/artemlavr/giocondo/internal/agent/singboxdriver"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pb"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pki"
 	"github.com/artemlavr/giocondo/internal/nodeapi/v2raystats"
@@ -163,13 +166,16 @@ func (e *testEnv) newAgent(t *testing.T) (*agent.Agent, string) {
 		t.Fatal(err)
 	}
 	cfgPath := filepath.Join(e.dir, "node", "config.json")
-	return &agent.Agent{
-		Panels: []agent.Panel{{Addr: e.addr, Client: e.panelClient(t, "n1")}},
-		Applier: &agent.Applier{
-			SingBoxBin: bin, ConfigPath: cfgPath,
-			RestartCmd: []string{"true"}, StatusCmd: []string{"true"},
-		},
-		Collector:      &agent.Collector{Client: e.statsCli},
+
+	runtime := &engine.Runtime{Driver: &singboxdriver.Driver{Binary: bin, RestartCmd: []string{"true"}, StatusCmd: []string{"true"}, StopCmd: []string{"true"}, Collector: &singboxdriver.Collector{Client: e.statsCli}}, ConfigPath: cfgPath, StateDir: filepath.Join(e.dir, "agent-state")}
+	if err := runtime.Open(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	engines, err := engine.NewManager(runtime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &agent.Agent{Panels: []agent.Panel{{Addr: e.addr, Client: e.panelClient(t, "n1")}}, Engines: engines,
 		Version:        "test",
 		StatsInterval:  50 * time.Millisecond,
 		HealthInterval: 50 * time.Millisecond,
@@ -280,13 +286,15 @@ func TestAgentFallsBackToSpareAddress(t *testing.T) {
 	dead := lis.Addr().String()
 	_ = lis.Close()
 
-	ag, cfgPath := e.newAgent(t)
+	ag, _ := e.newAgent(t)
 	ag.Panels = []agent.Panel{{Addr: dead, Client: e.panelClientAt(t, dead, "n1")}, ag.Panels[0]}
 	actx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	start := time.Now()
-	go func() { _ = ag.Run(actx) }()
-	eventually(t, "config via spare address", func() bool { return readFile(cfgPath) != "" })
+	finished := make(chan struct{})
+	go func() { defer close(finished); _ = ag.Run(actx) }()
+	t.Cleanup(func() { cancel(); <-finished })
+	eventually(t, "config via spare address", func() bool { return ag.Engines.Runtime("sing-box").Snapshot().AppliedHash != "" })
 	// The fallback is tried right after the primary fails, without a backoff pause.
 	if d := time.Since(start); d > 900*time.Millisecond {
 		t.Errorf("spare address used after %v", d)
@@ -300,7 +308,7 @@ func TestAgentReconnectSkipsAppliedConfig(t *testing.T) {
 	actx, cancel := context.WithCancel(ctx)
 	done := make(chan error, 1)
 	go func() { done <- ag.Run(actx) }()
-	eventually(t, "config on node", func() bool { return readFile(cfgPath) != "" })
+	eventually(t, "config on node", func() bool { return ag.Engines.Runtime("sing-box").Snapshot().AppliedHash != "" })
 	cancel()
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Errorf("agent stopped with %v", err)
@@ -311,7 +319,9 @@ func TestAgentReconnectSkipsAppliedConfig(t *testing.T) {
 	ag2, _ := e.newAgent(t)
 	actx2, cancel2 := context.WithCancel(ctx)
 	defer cancel2()
-	go func() { _ = ag2.Run(actx2) }()
+	finished2 := make(chan struct{})
+	go func() { defer close(finished2); _ = ag2.Run(actx2) }()
+	t.Cleanup(func() { cancel2(); <-finished2 })
 	eventually(t, "node online", func() bool {
 		n, _ := e.st.GetNode(ctx, e.nodeID)
 		return n.Status == store.NodeOnline
@@ -510,12 +520,89 @@ func TestNodeDirtyState(t *testing.T) {
 	if err := os.WriteFile(failBin, []byte("#!/bin/sh\n[ \"$1\" = check ] && { echo 'bad config' >&2; exit 1; }\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	bad.Applier.SingBoxBin = failBin
+	bad.Engines.Runtime("sing-box").Driver.(*singboxdriver.Driver).Binary = failBin
 	bctx, stopBad := context.WithCancel(ctx)
 	defer stopBad()
-	go func() { _ = bad.Run(bctx) }()
-	eventually(t, "apply error", func() bool { return strings.Contains(node().ApplyError, "bad config") })
+	badDone := make(chan struct{})
+	go func() { defer close(badDone); _ = bad.Run(bctx) }()
+	t.Cleanup(func() { stopBad(); <-badDone })
+	eventually(t, "apply error", func() bool { return strings.Contains(node().ApplyError, "validation failed") })
 	if !node().Dirty() {
 		t.Error("node with failed apply is not dirty")
+	}
+}
+
+func TestEngineRecoveryErrorSurvivesHelloAndHealth(t *testing.T) {
+	e := newTestEnv(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, desired, err := e.hub.buildConfig(ctx, e.nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream, err := e.panelClient(t, "n1").Sync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := &pb.EngineState{Id: "sing-box", Phase: "blocked", AppliedHash: "previous", RejectedHash: desired, Error: "rollback failed"}
+	if err = stream.Send(&pb.AgentMessage{Msg: &pb.AgentMessage_Hello{Hello: &pb.Hello{ConfigHash: "previous", InstanceId: "runtime-test", Capabilities: []string{"engine-runtime-v1"}, Engines: []*pb.EngineState{state}}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err = stream.Send(&pb.AgentMessage{Msg: &pb.AgentMessage_Health{Health: &pb.Health{ConfigHash: "previous", Engines: []*pb.EngineState{state}}}}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "recovery error retained", func() bool { n, _ := e.st.GetNode(ctx, e.nodeID); return n != nil && n.ApplyError == "rollback failed" })
+	cancel()
+}
+
+func TestAgentUpgradePreservesImportedWireGuard(t *testing.T) {
+	e := newTestEnv(t)
+	ctx := context.Background()
+	config, hash, err := e.hub.buildConfig(ctx, e.nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	users, err := e.st.ListUsers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inbounds, err := e.st.ListInbounds(ctx, e.nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ag, path := e.newAgent(t)
+	if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(path, config, 0600); err != nil {
+		t.Fatal(err)
+	}
+	restartLog := filepath.Join(e.dir, "unexpected-restart")
+	restart := filepath.Join(e.dir, "record-restart")
+	if err = os.WriteFile(restart, []byte("#!/bin/sh\ntouch '"+restartLog+"'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	ag.Engines.Runtime("sing-box").Driver.(*singboxdriver.Driver).RestartCmd = []string{restart}
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan error, 1)
+	go func() { done <- ag.Run(runCtx) }()
+	defer func() {
+		cancel()
+		if err := <-done; !errors.Is(err, context.Canceled) {
+			t.Errorf("agent shutdown: %v", err)
+		}
+	}()
+	eventually(t, "existing config adopted", func() bool { n, _ := e.st.GetNode(ctx, e.nodeID); return n.AppliedHash == hash })
+	time.Sleep(150 * time.Millisecond)
+	if _, err = os.Stat(restartLog); !os.IsNotExist(err) {
+		t.Fatal("upgrade restarted sing-box")
+	}
+	if got := readFile(path); got != string(config) {
+		t.Fatal("upgrade changed server config")
+	}
+	gotUsers, _ := e.st.ListUsers(ctx)
+	gotInbounds, _ := e.st.ListInbounds(ctx, e.nodeID)
+	if !reflect.DeepEqual(users, gotUsers) || !reflect.DeepEqual(inbounds, gotInbounds) {
+		t.Fatal("upgrade changed imported credentials or profiles")
 	}
 }

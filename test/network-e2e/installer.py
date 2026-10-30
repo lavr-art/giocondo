@@ -26,7 +26,7 @@ def client_request(port):
  p=exec_('client','curl','-fsS','--max-time','8','--cacert','/work/pki/ca.crt','-x',f'http://127.0.0.1:{port}',CHALLENGE_URL,check=False)
  return p.returncode==0 and p.stdout==CHALLENGE
 
-def main():
+def main(exercise=None):
  # A static control fixture avoids depending on the panel container or a private destination.
  (WORK/'installer-challenge.txt').write_text(CHALLENGE)
  wait('systemd ready in the clean server',lambda:sh('systemctl is-system-running --wait',check=False).returncode in (0,1))
@@ -46,15 +46,19 @@ def main():
   return json.loads(exec_('client','python3','-c',script).stdout)
  profile=wait('subscription served on the public IP',subscription,60)
  selected={o['type']:o for o in profile['outbounds'] if o['type'] in ('vless','hysteria2')}
- assert set(selected)=={'vless','hysteria2'},profile['outbounds']
+ selected['wireguard']=profile['endpoints'][0]
+ assert set(selected)=={'vless','hysteria2','wireguard'},profile
  for index,(kind,out) in enumerate(sorted(selected.items()),1):
   out['tag']='vpn';port=19100+index
   cfg={'log':{'level':'error'},'inbounds':[{'type':'http','listen':'127.0.0.1','listen_port':port}],
        'dns':{'servers':[{'type':'udp','tag':'dns','server':'172.30.77.3'}],'strategy':'ipv4_only'},
-       'route':{'final':'vpn','default_domain_resolver':'dns'},'outbounds':[out]}
+       'route':{'final':'vpn','default_domain_resolver':'dns'}}
+  cfg['endpoints' if kind=='wireguard' else 'outbounds']=[out]
   path=WORK/f'client-installer-{kind}.json';path.write_text(json.dumps(cfg));path.chmod(0o600)
   exec_('client','sh','-c',f'nohup /work/sing-box run -c /work/client-installer-{kind}.json > /work/client-installer-{kind}.log 2>&1 &')
   wait(f'client traffic through the installed node: {kind}',lambda port=port:client_request(port),90)
+ if exercise is not None:
+  exercise(user, selected)
  before=snapshot()
  out=sh(INSTALL).stdout
  assert 'giocondo-vpn is installed.' in out,out

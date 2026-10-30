@@ -62,9 +62,18 @@ nfpms:
       Managed by giocondo-vpn-agent; does not conflict with the official sing-box package.
     bindir: /usr/lib/giocondo-vpn
     contents:
+      - src: deploy/apt/deb/postflight.sh
+        dst: /usr/share/giocondo-vpn/sing-box/postflight.sh
+        file_info:
+          mode: 0755
+      - src: deploy/apt/recover.sh
+        dst: /usr/share/giocondo-vpn/sing-box/recover.sh
+        file_info:
+          mode: 0755
       - src: deploy/apt/systemd/giocondo-vpn-sing-box.service
         dst: /usr/lib/systemd/system/giocondo-vpn-sing-box.service
     scripts:
+      preinstall: deploy/apt/deb/upgrade-preinst.sh
       postinstall: deploy/apt/deb/sing-box-postinst.sh
       preremove: deploy/apt/deb/sing-box-prerm.sh
       postremove: deploy/apt/deb/sing-box-postrm.sh
@@ -85,11 +94,20 @@ nfpms:
     bindir: /usr/bin
     dependencies: [giocondo-vpn-sing-box, iptables]
     contents:
+      - src: deploy/apt/deb/postflight.sh
+        dst: /usr/share/giocondo-vpn/agent/postflight.sh
+        file_info:
+          mode: 0755
+      - src: deploy/apt/recover.sh
+        dst: /usr/share/giocondo-vpn/agent/recover.sh
+        file_info:
+          mode: 0755
       - src: deploy/apt/systemd/giocondo-vpn-agent.service
         dst: /usr/lib/systemd/system/giocondo-vpn-agent.service
       - src: deploy/apt/deb/agent.env
         dst: /usr/share/giocondo-vpn/agent.env.example
     scripts:
+      preinstall: deploy/apt/deb/upgrade-preinst.sh
       postinstall: deploy/apt/deb/agent-postinst.sh
       preremove: deploy/apt/deb/agent-prerm.sh
       postremove: deploy/apt/deb/agent-postrm.sh
@@ -111,11 +129,20 @@ nfpms:
     dependencies: [passwd]
     recommends: [giocondo-vpn-agent]
     contents:
+      - src: deploy/apt/deb/postflight.sh
+        dst: /usr/share/giocondo-vpn/panel/postflight.sh
+        file_info:
+          mode: 0755
+      - src: deploy/apt/recover.sh
+        dst: /usr/share/giocondo-vpn/panel/recover.sh
+        file_info:
+          mode: 0755
       - src: deploy/apt/systemd/giocondo-vpn-panel.service
         dst: /usr/lib/systemd/system/giocondo-vpn-panel.service
       - src: deploy/apt/deb/panel.env
         dst: /usr/share/giocondo-vpn/panel.env.example
     scripts:
+      preinstall: deploy/apt/deb/upgrade-preinst.sh
       postinstall: deploy/apt/deb/panel-postinst.sh
       preremove: deploy/apt/deb/panel-prerm.sh
       postremove: deploy/apt/deb/panel-postrm.sh

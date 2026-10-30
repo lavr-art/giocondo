@@ -11,7 +11,13 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  candidate:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -25,23 +31,82 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: v2.19.0
-          args: release --clean
+          args: release --clean --skip=publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
-          name: debs
-          path: dist/*.deb
+          name: candidate
+          path: |
+            dist/*.deb
+            dist/giocondo-vpn-agent_*
+            dist/SHA256SUMS
+
+  packages:
+    needs: candidate
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate
+          path: dist
+      - name: Clean install and unchanged repeat
+        run: sh test/network-e2e/run.sh installer
+      - name: Previous stable, installer upgrade and recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPGRADE_PATH: installer
+        run: sh test/network-e2e/run.sh upgrade
+      - name: Previous stable, direct APT upgrade and recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPGRADE_PATH: apt
+        run: sh test/network-e2e/run.sh upgrade
+      - name: Real server and client configuration validators
+        run: sh test/client-validators.sh
+      - name: Diagnostic logs
+        if: failure()
+        run: sh test/network-e2e/run.sh logs
+      - name: Tear down isolated containers
+        if: always()
+        run: sh test/network-e2e/run.sh down
+
+  publish:
+    needs: [checks, candidate, packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate
+          path: dist
+      - name: Publish the tested artifacts without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --draft ./*.deb ./giocondo-vpn-agent_*_linux_* ./SHA256SUMS
 
   apt:
-    needs: release
+    needs: publish
     runs-on: ubuntu-latest
     concurrency: gh-pages
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
-          name: debs
+          name: candidate
           path: debs
       - name: checkout gh-pages
         run: |
@@ -67,3 +132,8 @@ jobs:
           git add -A
           git commit -m "apt: ${GITHUB_REF_NAME}"
           git push origin gh-pages
+
+      - name: Mark the verified release public
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

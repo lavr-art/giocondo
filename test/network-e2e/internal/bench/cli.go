@@ -15,6 +15,7 @@ import (
 
 const usage = "usage: bench prepare-packages ARCH MODE | unpack-packages | archive [ROOT] | control | request METHOD PATH [JSON] | http METHOD URL [JSON] | caddy-check"
 
+// Run starts the component and blocks until it stops.
 func Run(ctx context.Context, args []string, out io.Writer) error {
 	if len(args) == 0 {
 		return errors.New(usage)
@@ -45,28 +46,7 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		return RunControl(ctx, "/work")
 	case "request", "http":
-		if len(args) != 3 && len(args) != 4 {
-			return errors.New(usage)
-		}
-		body := ""
-		if len(args) == 4 {
-			body = args[3]
-		}
-		token := ""
-		url := args[2]
-		if args[0] == "request" {
-			data, err := os.ReadFile("/work/token-output")
-			if err != nil {
-				return fmt.Errorf("read API token: %w", err)
-			}
-			lines := strings.Split(strings.TrimRight(string(data), "\r\n"), "\n")
-			token = strings.TrimSpace(lines[len(lines)-1])
-			if token == "" {
-				return errors.New("API token file is empty")
-			}
-			url = "http://127.0.0.1:8080/test-admin/api/" + args[2]
-		}
-		return HTTPRequest(ctx, &http.Client{Timeout: 25 * time.Second}, args[1], url, body, token, out)
+		return runRequest(ctx, args, out)
 	case "caddy-check":
 		if len(args) != 1 {
 			return errors.New(usage)
@@ -77,9 +57,34 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 	}
 }
 
+func runRequest(ctx context.Context, args []string, out io.Writer) error {
+	if len(args) != 3 && len(args) != 4 {
+		return errors.New(usage)
+	}
+	body := ""
+	if len(args) == 4 {
+		body = args[3]
+	}
+	token, url := "", args[2]
+	if args[0] == "request" {
+		data, err := os.ReadFile("/work/token-output")
+		if err != nil {
+			return fmt.Errorf("read API token: %w", err)
+		}
+		lines := strings.Split(strings.TrimRight(string(data), "\r\n"), "\n")
+		token = strings.TrimSpace(lines[len(lines)-1])
+		if token == "" {
+			return errors.New("API token file is empty")
+		}
+		url = "http://127.0.0.1:8080/test-admin/api/" + args[2]
+	}
+	return HTTPRequest(ctx, &http.Client{Timeout: 25 * time.Second}, args[1], url, body, token, out)
+}
+
+// Archive packages an artifact.
 func Archive(root string) error {
 	archive := filepath.Join(root, "archive", strconv.FormatInt(time.Now().UnixNano(), 10))
-	if err := os.MkdirAll(archive, 0755); err != nil {
+	if err := os.MkdirAll(archive, 0750); err != nil {
 		return err
 	}
 	for _, pattern := range []string{"panel.db*", "records.json", "events.jsonl", "token-output", "results.txt", "client-*", "debug*"} {

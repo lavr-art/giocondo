@@ -55,6 +55,11 @@ driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Ka
 The panel builds each node's desired config from its database, the agent applies it and reports
 the applied hash, health and traffic deltas back over the same stream.
 
+Application packages assemble and retain the database, repositories, clients, services,
+servers and workers. Services implement individual operations; `internal/worker` owns
+background schedules, queues and task execution. HTTP and gRPC handlers receive the
+specific capabilities they need.
+
 ## Quick start
 
 Install the panel and a node on one clean Debian 11+ / Ubuntu 22.04+ server (amd64 or arm64), as root:
@@ -199,17 +204,24 @@ Repository layout:
 | Path | Contents |
 | --- | --- |
 | `cmd/panel`, `cmd/agent` | Panel and agent entry points, panel CLI |
-| `internal/admin` | Business operations shared by the web UI and the API |
-| `internal/api`, `internal/web` | REST API and web UI |
-| `internal/store` | SQLite storage and migrations |
-| `internal/nodehub`, `internal/agent` | Both sides of the Sync link |
-| `internal/singbox`, `internal/subscription` | Server config and client subscription generators |
-| `internal/provision`, `internal/dns`, `internal/healthcheck`, `internal/webhook` | Provisioning, DNS, checks, events |
-| `proto/` | gRPC contracts |
+| `internal/app/panelapp`, `internal/app/agent` | Application construction, dependency lifetime and transport/worker wiring |
+| `internal/model/panel`, `internal/model/protocol` | Entities, user access policy and protocol parameters |
+| `internal/service` | Focused business services with consumer-owned dependency interfaces |
+| `internal/worker` | User watching, node checks, event delivery, reconciliation, task execution and agent engine/network workers |
+| `internal/service/nodeconfig` | Desired configuration preparation and WG/monitor credentials |
+| `internal/transport/http/api`, `internal/transport/http/web` | REST API and web UI |
+| `internal/repository/sqlite` | SQLite connection and shared helpers; one repository package per domain beneath it |
+| `migrations` | SQLite schema migrations, embedded and applied on open |
+| `internal/transport/grpc/nodehub`, `internal/app/agent` | Both sides of the Sync link |
+| `internal/service/singbox`, `internal/service/subscription` | Server config and client subscription generators |
+| `internal/platform`, `internal/clients` | Installer artifacts, engine/system adapters, SSH, DNS, probe and webhook clients |
+| `proto/`, `internal/transport/grpc/pb`, `internal/transport/grpc/v2raystats` | Protobuf sources and generated gRPC contracts |
 | `deploy/apt/` | deb scripts, systemd units, agent installer, apt repository script |
 | `install.sh` | One-line server installer (panel + local node) |
 | `build/sing-box/` | Separate Go module pinning the sing-box version |
 | `test/network-e2e/` | Docker network test bench |
+
+See [architecture boundaries](docs/architecture.md) for dependency rules and creation guarantees.
 
 ## Testing
 
@@ -225,8 +237,8 @@ Linux with `dpkg` and GNU tar/coreutils and are explicitly skipped on other syst
 Some tests validate generated configs with external binaries and are skipped when they are missing:
 
 ```sh
-make sing-box && PATH="$PWD/bin:$PATH" go test -count=1 ./internal/singbox
-MIHOMO_CHECK=1 go test -count=1 ./internal/subscription   # requires mihomo in PATH
+make sing-box && PATH="$PWD/bin:$PATH" go test -count=1 ./internal/service/singbox
+MIHOMO_CHECK=1 go test -count=1 ./internal/service/subscription   # requires mihomo in PATH
 ```
 
 End-to-end network tests run in an isolated Docker bench (never on real nodes):

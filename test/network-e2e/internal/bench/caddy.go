@@ -1,3 +1,4 @@
+// Package bench implements the network benchmark harness.
 package bench
 
 import (
@@ -70,7 +71,7 @@ func checkCaddy(ctx context.Context, library, mode, host string) error {
 	}
 	fixture = fixture[:end] + " tls " + cert + " " + key + "\n}\n"
 	config := filepath.Join(root, "Caddyfile")
-	if err := os.WriteFile(config, []byte(fixture), 0600); err != nil {
+	if err := os.WriteFile(config, []byte(fixture), 0600); err != nil { //nolint:gosec // config path comes from the harness CLI.
 		return err
 	}
 	if _, err := commandOutput(ctx, "caddy", "validate", "--config", config, "--adapter", "caddyfile"); err != nil {
@@ -83,6 +84,7 @@ func checkCaddy(ctx context.Context, library, mode, host string) error {
 	defer func() { _ = log.Close() }()
 	processCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	process := exec.CommandContext(processCtx, "caddy", "run", "--config", config, "--adapter", "caddyfile")
 	process.Stdout, process.Stderr = log, log
 	process.WaitDelay = 5 * time.Second

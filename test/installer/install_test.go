@@ -2,7 +2,7 @@ package installer
 
 import (
 	"crypto/ed25519"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // emulates dpkg-query output; md5 is required by the installer script, not used for security.
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -24,6 +24,7 @@ type installerFixture struct {
 
 func newInstaller(t *testing.T) *installerFixture {
 	t.Helper()
+
 	base := t.TempDir()
 	f := &installerFixture{t: t, base: base, bin: filepath.Join(base, "bin"), env: filepath.Join(base, "panel.env"), caddy: filepath.Join(base, "Caddyfile")}
 	mkdir(t, f.bin)
@@ -44,7 +45,9 @@ func newInstaller(t *testing.T) *installerFixture {
 	writeFile(t, filepath.Join(base, "ca-source.crt"), f.ca)
 	return f
 }
+
 func (f *installerFixture) stub(name, body string) { f.t.Helper(); stub(f.t, f.bin, name, body) }
+
 func (f *installerFixture) shell(body string, success bool, realCaddy ...bool) commandResult {
 	f.t.Helper()
 	source := readFile(f.t, filepath.Join(repositoryRoot(f.t), "install.sh"))
@@ -65,18 +68,21 @@ func (f *installerFixture) shell(body string, success bool, realCaddy ...bool) c
 	}
 	return r
 }
+
 func (f *installerFixture) resolve(args string) commandResult {
 	f.t.Helper()
 	return f.shell(`DOMAIN= IP= DOMAIN_SET=0 IP_SET=0; detect_ip() { echo 192.0.2.1; }; `+args+`; prepare_config; printf "MODE=%s DOMAIN=%s\n" "$MODE" "$DOMAIN"`, true)
 }
+
 func (f *installerFixture) rebuildCA() {
 	f.t.Helper()
 	f.stub("update-ca-certificates", "cp "+quote(filepath.Join(f.base, "ca-source.crt"))+" "+quote(filepath.Join(f.base, "ca.crt")))
 }
+
 func (f *installerFixture) packageDefaultCaddy() {
 	f.t.Helper()
 	writeFile(f.t, f.caddy, ":80 { file_server }\n")
-	sum := md5.Sum([]byte(readFile(f.t, f.caddy)))
+	sum := md5.Sum([]byte(readFile(f.t, f.caddy))) //nolint:gosec // see the crypto/md5 import above.
 	f.stub("dpkg-query", fmt.Sprintf("printf ' %%s %%s\\n' %s %s", quote(f.caddy), quote(fmt.Sprintf("%x", sum))))
 }
 
@@ -87,6 +93,7 @@ func TestInstallerRepeatPreservesExistingSettings(t *testing.T) {
 	f.shell("DOMAIN=; configure_panel", true)
 	equal(t, readFile(t, f.env), content)
 }
+
 func TestInstallerStartPanelRequiresHTTPReadinessBeforeDatabaseInspection(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_SUB_LISTEN=0.0.0.0:8081\n")
@@ -100,12 +107,14 @@ printf '%s' "${url##*=}"`)
 		t.Fatal("readiness did not check the panel HTTP challenge")
 	}
 }
+
 func TestInstallerReconfigurePreservesGRPC(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_GRPC_LISTEN=:9555\nPANEL_LISTEN=127.0.0.1:8080\n")
 	f.shell("RECONFIGURE=1; configure_panel", true)
 	contains(t, readFile(t, f.env), "PANEL_GRPC_LISTEN=:9555\n")
 }
+
 func TestInstallerReconfigureIPURLsUseExistingListenerPorts(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_LISTEN=127.0.0.1:9090\nPANEL_SUB_LISTEN=127.0.0.1:9091\n")
@@ -113,6 +122,7 @@ func TestInstallerReconfigureIPURLsUseExistingListenerPorts(t *testing.T) {
 	contains(t, readFile(t, f.env), "PANEL_PUBLIC_URL=http://127.0.0.1:9090\n")
 	contains(t, readFile(t, f.env), "PANEL_SUB_URL=http://192.0.2.1:9091\n")
 }
+
 func TestInstallerNewInstallDefaultsToHTTPSByIP(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_LISTEN=127.0.0.1:9090\nPANEL_SUB_LISTEN=127.0.0.1:9091\n")
@@ -123,24 +133,29 @@ func TestInstallerNewInstallDefaultsToHTTPSByIP(t *testing.T) {
 	contains(t, content, "PANEL_SUB_URL=https://192.0.2.1:8443\n")
 	contains(t, content, "PANEL_SUB_LISTEN=127.0.0.1:9091\n")
 }
+
 func TestInstallerHTTPFlagKeepsPlainHTTP(t *testing.T) {
 	f := newInstaller(t)
 	contains(t, f.resolve("HTTP_SET=1").stdout, "MODE=http DOMAIN=\n")
 }
+
 func TestInstallerDomainAndHTTPAreExclusive(t *testing.T) {
 	f := newInstaller(t)
 	contains(t, f.shell("DOMAIN_SET=1 IP_SET=0 HTTP_SET=1; prepare_config", false).stderr, "--http")
 }
+
 func TestInstallerExistingHTTPInstallKeepsHTTP(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_PUBLIC_URL=http://127.0.0.1:8080\nPANEL_SUB_URL=http://192.0.2.1:8081\n")
 	contains(t, f.resolve(":").stdout, "MODE=http DOMAIN=\n")
 }
+
 func TestInstallerExistingHTTPSIPInstallKeepsIPMode(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_PUBLIC_URL=http://127.0.0.1:8080\nPANEL_SUB_URL=https://192.0.2.1:8443\n")
 	contains(t, f.resolve(":").stdout, "MODE=ip DOMAIN=\n")
 }
+
 func TestInstallerModeChangeRequiresReconfigure(t *testing.T) {
 	f := newInstaller(t)
 	content := "PANEL_PUBLIC_URL=http://127.0.0.1:8080\nPANEL_SUB_URL=https://192.0.2.1:8443\n"
@@ -148,6 +163,7 @@ func TestInstallerModeChangeRequiresReconfigure(t *testing.T) {
 	contains(t, f.shell("DOMAIN_SET=0 IP_SET=0 HTTP_SET=1; prepare_config; configure_panel", false).stderr, "--reconfigure")
 	equal(t, readFile(t, f.env), content)
 }
+
 func TestInstallerReconfigureIPSwitchesDomainToHTTPSIP(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_PUBLIC_URL=https://vpn.example.com:8443\nPANEL_SUB_URL=https://vpn.example.com:8443\n")
@@ -155,6 +171,7 @@ func TestInstallerReconfigureIPSwitchesDomainToHTTPSIP(t *testing.T) {
 	contains(t, readFile(t, f.env), "PANEL_PUBLIC_URL=http://127.0.0.1:8080\n")
 	contains(t, readFile(t, f.env), "PANEL_SUB_URL=https://192.0.2.1:8443\n")
 }
+
 func TestInstallerIPCaddySiteServesOnlySubscriptions(t *testing.T) {
 	f := newInstaller(t)
 	site := f.shell("MODE=ip; caddy_site", true).stdout
@@ -164,6 +181,7 @@ func TestInstallerIPCaddySiteServesOnlySubscriptions(t *testing.T) {
 	excludes(t, site, "8080")
 	excludes(t, site, "vpn.example.com")
 }
+
 func TestInstallerOldCaddyIsRefusedForIPCertificates(t *testing.T) {
 	f := newInstaller(t)
 	f.stub("caddy", `echo "v2.6.2 h1:abc"`)
@@ -171,12 +189,14 @@ func TestInstallerOldCaddyIsRefusedForIPCertificates(t *testing.T) {
 	f.stub("apt-cache", `printf 'caddy:\n  Candidate: 2.6.2-6\n'`)
 	contains(t, f.shell("download() { :; }; gpg() { :; }; MODE=ip; install_caddy", false, true).stderr, "2.10.2")
 }
+
 func TestInstallerNewCaddyIsAcceptedForIPCertificates(t *testing.T) {
 	f := newInstaller(t)
 	f.stub("caddy", `echo "v2.11.4 h1:abc"`)
 	f.stub("apt-get", "exit 99")
 	f.shell("MODE=ip; install_caddy", true, true)
 }
+
 func TestInstallerUnissuedIPCertificateFailsWithHint(t *testing.T) {
 	f := newInstaller(t)
 	f.stub("curl", "exit 7")
@@ -186,6 +206,7 @@ func TestInstallerUnissuedIPCertificateFailsWithHint(t *testing.T) {
 	contains(t, r.stderr, "80/tcp")
 	contains(t, r.stderr, "--http")
 }
+
 func TestInstallerIssuedIPCertificateIsVerifiedAgainstPublicIP(t *testing.T) {
 	f := newInstaller(t)
 	log := filepath.Join(f.base, "curl.log")
@@ -197,6 +218,7 @@ func TestInstallerIssuedIPCertificateIsVerifiedAgainstPublicIP(t *testing.T) {
 	excludes(t, args, "--insecure")
 	excludes(t, args, " -k ")
 }
+
 func TestInstallerCustomCaddyWithDefaultRootIsProtected(t *testing.T) {
 	f := newInstaller(t)
 	content := ":80 {\n root * /usr/share/caddy\n}\nother.example {\n respond \"keep\"\n}\n"
@@ -204,6 +226,7 @@ func TestInstallerCustomCaddyWithDefaultRootIsProtected(t *testing.T) {
 	f.shell("configure_caddy", false)
 	equal(t, readFile(t, f.caddy), content)
 }
+
 func TestInstallerLegacyMarkerIsNotOwnership(t *testing.T) {
 	f := newInstaller(t)
 	content := "# Managed by giocondo-vpn install.sh\nother.example { respond \"keep\" }\n"
@@ -211,6 +234,7 @@ func TestInstallerLegacyMarkerIsNotOwnership(t *testing.T) {
 	f.shell("configure_caddy", false)
 	equal(t, readFile(t, f.caddy), content)
 }
+
 func TestInstallerGeneratedCaddyIsReusableButEditsAreProtected(t *testing.T) {
 	f := newInstaller(t)
 	f.shell("configure_caddy; configure_caddy", true)
@@ -219,12 +243,14 @@ func TestInstallerGeneratedCaddyIsReusableButEditsAreProtected(t *testing.T) {
 	f.shell("configure_caddy", false)
 	equal(t, readFile(t, f.caddy), content)
 }
+
 func TestInstallerPackageDefaultCaddyIsReplaced(t *testing.T) {
 	f := newInstaller(t)
 	f.packageDefaultCaddy()
 	f.shell("configure_caddy", true)
 	contains(t, readFile(t, f.caddy), "https://vpn.example.com:8443")
 }
+
 func TestInstallerInvalidCaddyDoesNotReplaceFile(t *testing.T) {
 	f := newInstaller(t)
 	f.packageDefaultCaddy()
@@ -232,6 +258,7 @@ func TestInstallerInvalidCaddyDoesNotReplaceFile(t *testing.T) {
 	f.shell("configure_caddy", false)
 	equal(t, readFile(t, f.caddy), ":80 { file_server }\n")
 }
+
 func TestInstallerReloadFailureRestoresFile(t *testing.T) {
 	f := newInstaller(t)
 	f.shell("configure_caddy", true)
@@ -240,6 +267,7 @@ func TestInstallerReloadFailureRestoresFile(t *testing.T) {
 	f.shell("DOMAIN=new.example.com; configure_caddy", false)
 	equal(t, readFile(t, f.caddy), content)
 }
+
 func TestInstallerCAPreparedEvenWithDownloader(t *testing.T) {
 	f := newInstaller(t)
 	log := filepath.Join(f.base, "apt.log")
@@ -248,17 +276,20 @@ func TestInstallerCAPreparedEvenWithDownloader(t *testing.T) {
 	f.shell("prepare_dependencies", true)
 	contains(t, readFile(t, log), "ca-certificates")
 }
+
 func TestInstallerBootstrapFailureIsNotSuccess(t *testing.T) {
 	f := newInstaller(t)
 	f.stub("apt-get", "exit 1")
 	f.shell("prepare_dependencies", false)
 }
+
 func TestInstallerExistingHTTPSWithoutArgumentsKeepsDomain(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_PUBLIC_URL=https://vpn.example.com:8443\nPANEL_SUB_URL=https://vpn.example.com:8443\n")
 	r := f.shell(`DOMAIN= IP= DOMAIN_SET=0 IP_SET=0; detect_ip() { echo 192.0.2.1; }; prepare_config; printf "DOMAIN=%s\n" "$DOMAIN"`, true)
 	contains(t, r.stdout, "DOMAIN=vpn.example.com")
 }
+
 func TestInstallerConflictingDomainIsRefusedBeforeChanges(t *testing.T) {
 	f := newInstaller(t)
 	content := "PANEL_PUBLIC_URL=https://old.example.com:8443\nPANEL_SUB_URL=https://old.example.com:8443\n"
@@ -266,10 +297,12 @@ func TestInstallerConflictingDomainIsRefusedBeforeChanges(t *testing.T) {
 	contains(t, f.shell("DOMAIN_SET=1 IP_SET=0; prepare_config", false).stderr, "--reconfigure")
 	equal(t, readFile(t, f.env), content)
 }
+
 func TestInstallerReconfigureRequiresExplicitAddress(t *testing.T) {
 	f := newInstaller(t)
 	f.shell("RECONFIGURE=1 DOMAIN_SET=0 IP_SET=0; prepare_config", false)
 }
+
 func TestInstallerMissingBundleIsRebuiltWithoutReinstallingCA(t *testing.T) {
 	f := newInstaller(t)
 	f.stub("dpkg-query", `printf 'install ok installed'`)
@@ -280,6 +313,7 @@ func TestInstallerMissingBundleIsRebuiltWithoutReinstallingCA(t *testing.T) {
 		t.Fatal("CA bundle was not rebuilt")
 	}
 }
+
 func TestInstallerReadyCADoesNotInvokePackageManager(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, filepath.Join(f.base, "ca.crt"), f.ca)
@@ -288,12 +322,14 @@ func TestInstallerReadyCADoesNotInvokePackageManager(t *testing.T) {
 	f.stub("update-ca-certificates", "exit 99")
 	f.shell("prepare_dependencies", true)
 }
+
 func TestInstallerReconfigurePreservesImplicitPublicGRPC(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "PANEL_PUBLIC_URL=http://127.0.0.1:8080\n# PANEL_GRPC_LISTEN=:9443\n")
 	f.shell("RECONFIGURE=1; configure_panel", true)
 	excludes(t, readFile(t, f.env), "\nPANEL_GRPC_LISTEN=")
 }
+
 func TestInstallerFirstFailureAfterNodeInstallCanBeRetried(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, f.env, "# package defaults\n")
@@ -311,6 +347,7 @@ false`, false)
 	f.shell("DOMAIN= DOMAIN_SET=0 IP_SET=0; prepare_config; configure_panel", true)
 	contains(t, readFile(t, f.env), "PANEL_SUB_URL=http://192.0.2.1:8081")
 }
+
 func TestInstallerCorruptNonemptyBundleIsRebuilt(t *testing.T) {
 	f := newInstaller(t)
 	writeFile(t, filepath.Join(f.base, "ca.crt"), "broken CA")
@@ -320,6 +357,7 @@ func TestInstallerCorruptNonemptyBundleIsRebuilt(t *testing.T) {
 	f.shell("prepare_dependencies", true)
 	equal(t, readFile(t, filepath.Join(f.base, "ca.crt")), f.ca)
 }
+
 func TestInstallerCABootstrapWithCurlWgetOrNoDownloader(t *testing.T) {
 	for _, downloader := range []string{"curl", "wget", "none"} {
 		t.Run(downloader, func(t *testing.T) {
@@ -349,6 +387,7 @@ func TestInstallerCABootstrapWithCurlWgetOrNoDownloader(t *testing.T) {
 		})
 	}
 }
+
 func TestInstallerFailedReadinessCannotPrintSuccess(t *testing.T) {
 	f := newInstaller(t)
 	f.stub("giocondo-vpn-panel", "exit 1")

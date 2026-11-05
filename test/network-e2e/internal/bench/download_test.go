@@ -81,7 +81,7 @@ func TestBaselineSelectionVerifiesCachedReleaseAndScopesToken(t *testing.T) {
 }
 
 func TestBaselineRejectsUnstableVersionAndReleaseHTTPErrors(t *testing.T) {
-	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+	client := &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 503, Body: io.NopCloser(strings.NewReader("unavailable")), Header: make(http.Header)}, nil
 	})}
 	for _, tag := range []string{"1.2.3", "v1.2.3-rc1", "../../escape"} {

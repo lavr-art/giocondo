@@ -33,16 +33,19 @@ type bench struct {
 	pollError  error
 	ctx        context.Context
 }
+
 type commandResult struct {
 	stdout, stderr string
 	err            error
 }
+
 type terminalError struct{ message string }
 
 func (e terminalError) Error() string { return e.message }
 
 func newBench(t *testing.T) *bench {
 	t.Helper()
+
 	_, source, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("locate network bench source")
@@ -91,12 +94,14 @@ func newBench(t *testing.T) *bench {
 var secretPattern = regexp.MustCompile(`(?i)(vpc_[a-z0-9_-]+|Bearer\s+[^\s"']+|/sub/[^\s?"']+|-----BEGIN[^-]*PRIVATE KEY-----[\s\S]*?-----END[^-]*PRIVATE KEY-----|"(?:password|private_key|preshared_key|token|uuid)"\s*:\s*"[^"]*"|(?:PANEL_ADMIN_PASSWORD|AGENT_[A-Z_]*(?:KEY|TOKEN)|password|private_key|preshared_key|token)\s*[=:]\s*[^\s,}]+)`)
 
 func redact(s string) string { return secretPattern.ReplaceAllString(s, "[REDACTED]") }
+
 func (b *bench) command(ctx context.Context, timeout time.Duration, input string, program string, args ...string) commandResult {
 	if ctx == b.t.Context() {
 		ctx = b.ctx
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+
 	cmd := exec.CommandContext(ctx, program, args...)
 	cmd.WaitDelay = 2 * time.Second
 	cmd.Stdin = strings.NewReader(input)
@@ -109,12 +114,15 @@ func (b *bench) command(ctx context.Context, timeout time.Duration, input string
 	}
 	return commandResult{stdout.String(), stderr.String(), err}
 }
+
 func (b *bench) composeWith(ctx context.Context, timeout time.Duration, args ...string) commandResult {
 	return b.command(ctx, timeout, "", "docker", append([]string{"compose", "-f", filepath.Join(b.root, "test", "network-e2e", "compose.yaml")}, args...)...)
 }
+
 func (b *bench) compose(args ...string) commandResult {
 	return b.composeWith(b.t.Context(), 3*time.Minute, args...)
 }
+
 func (b *bench) execute(service string, args ...string) commandResult {
 	return b.composeWith(b.t.Context(), 2*time.Minute, append([]string{"exec", "-T", service}, b.containerArgs(2*time.Minute, args)...)...)
 }
@@ -123,6 +131,7 @@ func (b *bench) containerArgs(limit time.Duration, args []string) []string {
 	if deadline, ok := b.ctx.Deadline(); ok {
 		limit = min(limit, time.Until(deadline))
 	}
+
 	// Stop container processes before the Docker client loses its connection.
 	limit = max(time.Millisecond, limit-3*time.Second)
 	return append([]string{"timeout", "--signal=TERM", "--kill-after=2s", fmt.Sprintf("%.3fs", limit.Seconds())}, args...)
@@ -148,16 +157,19 @@ func (b *bench) executeStatus(service string, args ...string) (commandResult, in
 	r.stdout = r.stdout[:index]
 	return r, status, nil
 }
+
 func (b *bench) shell(command string) commandResult {
 	args := append([]string{"exec", "-T", "installer"}, b.containerArgs(10*time.Minute, []string{"sh", "-c", command})...)
 	return b.composeWith(b.t.Context(), 10*time.Minute, args...)
 }
+
 func commandError(r commandResult) error {
 	if r.err == nil {
 		return nil
 	}
 	return fmt.Errorf("command failed: %w: %s\n%s", r.err, redact(r.stdout), redact(r.stderr))
 }
+
 func (b *bench) checked(r commandResult) string {
 	b.t.Helper()
 	if err := commandError(r); err != nil {
@@ -165,22 +177,27 @@ func (b *bench) checked(r commandResult) string {
 	}
 	return r.stdout
 }
+
 func (b *bench) require(ok bool, format string, args ...any) {
 	b.t.Helper()
 	if !ok {
 		b.t.Fatal(redact(fmt.Sprintf(format, args...)))
 	}
 }
+
 func (b *bench) equal(got, want any, label string) {
 	b.t.Helper()
+
 	// Config and identity comparisons may contain private keys and credentials.
 	b.require(reflect.DeepEqual(got, want), "%s differs", label)
 }
+
 func (b *bench) pass(label string) {
 	b.t.Helper()
 	b.t.Log("PASS", label)
 	b.report = append(b.report, label)
 }
+
 func (b *bench) pause(d time.Duration) error {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
@@ -191,6 +208,7 @@ func (b *bench) pause(d time.Duration) error {
 		return nil
 	}
 }
+
 func (b *bench) wait(label string, timeout time.Duration, check func() (bool, error)) {
 	b.t.Helper()
 	parent := b.ctx
@@ -221,6 +239,7 @@ func (b *bench) wait(label string, timeout time.Duration, check func() (bool, er
 	}
 	b.t.Fatalf("%s: timeout; last error: %s", label, redact(fmt.Sprint(lastErr)))
 }
+
 func decode(r commandResult) (any, error) {
 	if err := commandError(r); err != nil {
 		return nil, err
@@ -229,6 +248,7 @@ func decode(r commandResult) (any, error) {
 	err := json.Unmarshal([]byte(r.stdout), &v)
 	return v, err
 }
+
 func (b *bench) api(method, path string, body any) (any, error) {
 	args := []string{"/work/bench", "request", method, path}
 	if body != nil {
@@ -240,6 +260,7 @@ func (b *bench) api(method, path string, body any) (any, error) {
 	}
 	return decode(b.execute("panel", args...))
 }
+
 func (b *bench) mustAPI(method, path string, body any) any {
 	b.t.Helper()
 	v, err := b.api(method, path, body)
@@ -248,41 +269,49 @@ func (b *bench) mustAPI(method, path string, body any) any {
 	}
 	return v
 }
+
 func obj(v any) object {
 	if m, ok := v.(map[string]any); ok {
 		return m
 	}
 	return nil
 }
+
 func list(v any) []any {
 	if a, ok := v.([]any); ok {
 		return a
 	}
 	return nil
 }
+
 func str(v any) string { s, _ := v.(string); return s }
+
 func (b *bench) intField(m object, key string) int {
 	b.t.Helper()
 	n, ok := m[key].(float64)
 	b.require(ok && n == float64(int(n)), "required field %q must be an integral number", key)
 	return int(n)
 }
+
 func (b *bench) boolField(m object, key string) bool {
 	b.t.Helper()
 	v, ok := m[key].(bool)
 	b.require(ok, "required field %q must be a boolean", key)
 	return v
 }
+
 func (b *bench) stringField(m object, key string) string {
 	b.t.Helper()
 	v, ok := m[key].(string)
 	b.require(ok, "required field %q must be a string", key)
 	return v
 }
+
 func (b *bench) node() (object, error) {
 	v, e := b.api("GET", fmt.Sprintf("nodes/%d", b.nodeID), nil)
 	return obj(v), e
 }
+
 func (b *bench) mustNode() object {
 	b.t.Helper()
 	n, e := b.node()
@@ -291,7 +320,9 @@ func (b *bench) mustNode() object {
 	}
 	return n
 }
+
 func (b *bench) nodePath(suffix string) string { return fmt.Sprintf("nodes/%d%s", b.nodeID, suffix) }
+
 func (b *bench) job(v any) {
 	op := obj(v)
 	id := str(op["id"])
@@ -308,6 +339,7 @@ func (b *bench) job(v any) {
 		return job["status"] == "ok", nil
 	})
 }
+
 func (b *bench) write(name string, value []byte) {
 	b.t.Helper()
 	p := filepath.Join(b.work, name)
@@ -318,6 +350,7 @@ func (b *bench) write(name string, value []byte) {
 		b.t.Fatal(e)
 	}
 }
+
 func (b *bench) writeJSON(name string, value any) {
 	data, e := json.MarshalIndent(value, "", "  ")
 	if e != nil {
@@ -325,7 +358,9 @@ func (b *bench) writeJSON(name string, value any) {
 	}
 	b.write(name, append(data, '\n'))
 }
+
 func (b *bench) reportFile(name string) { b.write(name, []byte(strings.Join(b.report, "\n")+"\n")) }
+
 func (b *bench) file(name string) string {
 	b.t.Helper()
 	data, e := os.ReadFile(filepath.Join(b.work, name))
@@ -334,6 +369,7 @@ func (b *bench) file(name string) string {
 	}
 	return string(data)
 }
+
 func (b *bench) fingerprints() map[string][32]byte {
 	b.t.Helper()
 	paths, e := filepath.Glob(filepath.Join(b.work, "client-*.json"))
@@ -350,9 +386,11 @@ func (b *bench) fingerprints() map[string][32]byte {
 	}
 	return values
 }
+
 func (b *bench) trafficStatus(port int, url string) (commandResult, int, error) {
 	return b.executeStatus("client", "curl", "-fsS", "--max-time", "8", "--cacert", "/work/pki/ca.crt", "-x", fmt.Sprintf("http://127.0.0.1:%d", port), url)
 }
+
 func (b *bench) traffic(port int, url, challenge string) bool {
 	r, status, err := b.trafficStatus(port, url)
 	if err != nil {
@@ -379,14 +417,17 @@ func (b *bench) requireBlockedClient(kind string) {
 		b.t.Fatalf("blocked %s client did not report a curl connection failure (exit %d): %s", kind, status, redact(r.stderr))
 	}
 }
+
 func (b *bench) clientTraffic(kind string) bool {
 	port := map[string]int{"vless": 19001, "hy2": 19002, "wg": 19003}[kind]
 	return b.traffic(port, "https://192.0.2.200:8443/health/challenge?challenge="+strings.Repeat("a", 64), strings.Repeat("a", 64))
 }
+
 func (b *bench) profile(url string) (object, error) {
 	v, e := decode(b.execute("client", "/work/bench", "http", "GET", url))
 	return obj(v), e
 }
+
 func (b *bench) startClient(name string, port int, out object, wg bool) {
 	out["tag"] = "vpn"
 	cfg := object{"log": object{"level": "error"}, "inbounds": []any{object{"type": "http", "listen": "127.0.0.1", "listen_port": port}}, "dns": object{"servers": []any{object{"type": "udp", "tag": "dns", "server": "172.30.77.3"}}, "strategy": "ipv4_only"}, "route": object{"final": "vpn", "default_domain_resolver": "dns"}}
@@ -398,12 +439,14 @@ func (b *bench) startClient(name string, port int, out object, wg bool) {
 	b.writeJSON("client-"+name+".json", cfg)
 	b.checked(b.execute("client", "sh", "-c", fmt.Sprintf("nohup /work/sing-box run -c /work/client-%s.json > /work/client-%s.log 2>&1 & echo $! > /work/client-%s.pid", name, name, name)))
 }
+
 func (b *bench) liveClients(names []string) {
 	for _, name := range names {
 		pid := strings.TrimSpace(b.checked(b.execute("client", "cat", "/work/client-"+name+".pid")))
 		b.checked(b.execute("client", "kill", "-0", pid))
 	}
 }
+
 func (b *bench) drop(service string, rule ...string) {
 	b.t.Helper()
 	args := append([]string{"iptables", "-t", "raw", "-I", "PREROUTING", "1"}, rule...)
@@ -416,6 +459,7 @@ func (b *bench) drop(service string, rule ...string) {
 		}
 	})
 }
+
 func sortedKeys(m map[string]object) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -424,6 +468,7 @@ func sortedKeys(m map[string]object) []string {
 	sort.Strings(keys)
 	return keys
 }
+
 func (b *bench) diagnostics() {
 	for _, service := range []string{"panel", "node1", "node2", "installer", "client"} {
 		args := []string{"logs", "--tail", "100", service}

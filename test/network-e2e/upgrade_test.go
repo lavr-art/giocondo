@@ -11,6 +11,7 @@ import (
 )
 
 func sortStrings(values []string) { sort.Strings(values) }
+
 func releaseBranch(version string) string {
 	parts := strings.Split(strings.SplitN(version, "~", 2)[0], ".")
 	if parts[0] == "0" && len(parts) > 1 {
@@ -18,6 +19,7 @@ func releaseBranch(version string) string {
 	}
 	return parts[0]
 }
+
 func TestUpgrade(t *testing.T) {
 	b := newBench(t)
 	baseline := strings.TrimSpace(b.file("baseline-version"))

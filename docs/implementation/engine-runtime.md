@@ -6,7 +6,7 @@ same sing-box JSON and delivers it using the existing `ApplyConfig` command.
 
 ## Driver boundary
 
-`internal/agent/engine.Driver` adapts an external service: identity, version,
+`internal/service/engine.Driver` adapts an external service: identity, version,
 configuration validation, restart, stop, activity check and destructive traffic
 collection. Drivers must honor contexts. They must not return configuration
 contents or credentials in errors. Core libraries, panel code and SQLite do not
@@ -27,12 +27,16 @@ To add another engine in a future release:
    and capability-gated delivery in that engine's implementation. This release
    does not define a generic remote apply command or support runtime plugin loading.
 
-`Manager` provides one apply worker per engine, one current operation and one
+`internal/worker/enginequeue.Manager` provides one apply worker per engine, one current operation and one
 replaceable pending configuration. Duplicate submissions share a future; a
 superseded pending operation completes with an error. Different engines have
 independent workers and collection loops. A single goroutine sends Sync messages.
-External operations do not run in that sender. Network alias configuration has
-its own bounded worker.
+External operations do not run in that sender. Each Sync session waits for the outcomes of the configs it
+submitted and reports them as soon as they complete; an apply outlives a dropped session:
+after reconnect `Hello` shows it in the engine state, and resending the same config
+shares the running operation and reports its outcome. Network alias
+configuration has its own bounded worker in `internal/worker/netqueue`: one command runs,
+the newest one waits, and a replaced command is reported as superseded.
 
 ## Apply and recovery
 
@@ -44,9 +48,19 @@ keys and are written with mode `0600`; journal directories use `0700`.
 | Durable phase | Recovery after process termination |
 | --- | --- |
 | No journal | Adopt the existing config without restarting the service. |
-| `prepared`, `activating`, `restoring` | Restore `.prev`, restart and check the previous service; if there was no previous config, stop the service and remove the failed config. |
-| `committed` | Verify the active file matches the confirmed hash and keep it without restarting. |
-| Invalid journal, mismatched file or failed recovery | Report `blocked`; reject new applies for this engine until recovery succeeds. |
+| `activating`, `restoring` (and legacy `prepared`) | Restore `.prev`, restart and check the previous service; if there was no previous config, stop the service and remove the failed config. |
+| `committed`, active file matches | Keep it without restarting. |
+| `committed`, active file changed or removed outside the agent | Re-adopt it as the confirmed config without restarting and report `config changed outside agent`. |
+| Invalid journal or failed recovery | Report `blocked`; reject new applies for this engine until recovery succeeds. |
+
+Current agents write only the `activating` phase before activation; `prepared`,
+written by earlier agents, is still recovered.
+
+A configuration changed outside the agent is never a reason to block: the panel
+is the source of truth. Both `Open` and the next apply durably re-adopt the
+external file, which becomes the rollback target, and the panel sees a differing
+applied hash and sends its configuration again. A successful apply clears the
+reported error.
 
 The runtime durably writes the journal before replacing the active configuration.
 It commits the new hash only after restart and activity checks succeed. An
@@ -100,11 +114,14 @@ along with agent certificates/settings; it does not purge the sing-box package.
 
 ## Verification
 
-Tests cover original sing-box apply behavior, unchanged-config suppression,
-validation and startup failures, rollback failures, journal write errors,
-singleton locking, interruption of a subprocess at each durable phase, worker
-isolation, superseded requests, responsive Sync during restart/network operations,
-legacy reconciliation and adoption of existing WG credentials/configuration.
+Tests in `internal/service/engine` cover apply, unchanged-config suppression,
+validation and startup failures, rollback (including after cancellation),
+rollback failures, journal write errors, counter collection before every
+restart, adoption and re-adoption of external configs, recovery of a legacy
+`prepared` journal and interruption of a subprocess at each durable phase.
+`internal/repository/enginefs` covers singleton locking; `internal/worker/enginequeue`
+and `internal/worker/panelsync` cover worker isolation, superseded requests and
+responsive Sync during restart/network operations.
 Run `make build test lint` and `go test -race ./...`. Run the Docker network bench
 and real sing-box validator checks as described in the repository instructions.
 Measure RSS on Linux separately from the engine processes; the 20–30 MB agent

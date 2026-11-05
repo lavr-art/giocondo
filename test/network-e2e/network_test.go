@@ -169,6 +169,7 @@ func TestNetwork(t *testing.T) {
 	b.pass("unreachable candidate leaves active IP unchanged")
 	b.reportFile("results.txt")
 }
+
 func (b *bench) probesFor(n object, ip string) []object {
 	var result []object
 	for _, v := range list(n["probes"]) {
@@ -179,6 +180,7 @@ func (b *bench) probesFor(n object, ip string) []object {
 	}
 	return result
 }
+
 func (b *bench) noProbeErrors(probes []object) bool {
 	for _, p := range probes {
 		if b.stringField(p, "error") != "" {

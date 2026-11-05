@@ -28,7 +28,7 @@ func selectPackages(source, arch string) ([]debPackage, error) {
 	if arch != "arm64" && arch != "amd64" {
 		return nil, fmt.Errorf("unsupported package architecture %q", arch)
 	}
-	f, err := os.Open(filepath.Join(source, "SHA256SUMS"))
+	f, err := os.Open(filepath.Join(source, "SHA256SUMS")) //nolint:gosec // source root comes from the harness CLI.
 	if err != nil {
 		return nil, fmt.Errorf("read package checksums: %w", err)
 	}
@@ -80,7 +80,7 @@ func selectPackages(source, arch string) ([]debPackage, error) {
 		if !ok {
 			return nil, fmt.Errorf("missing checksum: %s", name)
 		}
-		file, err := os.Open(path)
+		file, err := os.Open(path) //nolint:gosec // path is built from the harness source root.
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +106,7 @@ func copyPackages(source, destination, arch string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destination), 0750); err != nil {
 		return err
 	}
 	tmp, err := os.MkdirTemp(filepath.Dir(destination), ".packages-")
@@ -122,6 +122,7 @@ func copyPackages(source, destination, arch string) error {
 	if err := copyFile(filepath.Join(source, "SHA256SUMS"), filepath.Join(tmp, "SHA256SUMS")); err != nil {
 		return err
 	}
+
 	// Recheck the bytes copied so a concurrently rebuilt source cannot enter the bench.
 	if _, err := selectPackages(tmp, arch); err != nil {
 		return err
@@ -133,7 +134,7 @@ func copyPackages(source, destination, arch string) error {
 }
 
 func copyFile(source, dest string) error {
-	in, err := os.Open(source)
+	in, err := os.Open(source) //nolint:gosec // source path comes from the harness CLI.
 	if err != nil {
 		return err
 	}
@@ -142,7 +143,7 @@ func copyFile(source, dest string) error {
 	if err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
+	out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm()) //nolint:gosec // dest is a harness-managed staging path.
 	if err != nil {
 		return err
 	}
@@ -156,6 +157,7 @@ func copyFile(source, dest string) error {
 
 const githubRepo = "lavr-art/giocondo"
 
+// PreparePackages stages packages for the benchmark.
 func PreparePackages(ctx context.Context, arch, mode string) error {
 	root := filepath.Join("bin", "network-e2e")
 	source := os.Getenv("CANDIDATE_DEBS")
@@ -196,7 +198,7 @@ func prepareBaseline(ctx context.Context, root, arch, tag string, client *http.C
 		return fmt.Errorf("baseline must be a stable vX.Y.Z release, got %q", tag)
 	}
 	cache := filepath.Join(root, "downloads", tag)
-	if err := os.MkdirAll(cache, 0755); err != nil {
+	if err := os.MkdirAll(cache, 0750); err != nil { //nolint:gosec // cache root comes from the harness CLI.
 		return err
 	}
 	names := []string{"SHA256SUMS"}
@@ -205,7 +207,7 @@ func prepareBaseline(ctx context.Context, root, arch, tag string, client *http.C
 	}
 	for _, name := range names {
 		target := filepath.Join(cache, name)
-		if _, err := os.Stat(target); err == nil {
+		if _, err := os.Stat(target); err == nil { //nolint:gosec // target is built from the harness cache root.
 			continue
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
@@ -225,7 +227,7 @@ func prepareBaseline(ctx context.Context, root, arch, tag string, client *http.C
 }
 
 func releaseRequest(ctx context.Context, client *http.Client, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) //nolint:gosec // url is a fixed GitHub release URL built by the harness.
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +235,7 @@ func releaseRequest(ctx context.Context, client *http.Client, url string) ([]byt
 	if token := os.Getenv("GH_TOKEN"); token != "" && req.URL.Host == "api.github.com" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	response, err := client.Do(req)
+	response, err := client.Do(req) //nolint:gosec // see the request above.
 	if err != nil {
 		return nil, fmt.Errorf("download %s: %w", url, err)
 	}
@@ -249,7 +251,7 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.Remove(f.Name()) }()
+	defer func() { _ = os.Remove(f.Name()) }() //nolint:gosec // f.Name() comes from os.CreateTemp.
 	if err := f.Chmod(mode); err != nil {
 		_ = f.Close()
 		return err
@@ -261,12 +263,13 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	return os.Rename(f.Name(), path)
+	return os.Rename(f.Name(), path) //nolint:gosec // f.Name() comes from os.CreateTemp; path is harness-managed.
 }
 
 func commandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
+
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.WaitDelay = 5 * time.Second
 	var stderr strings.Builder
@@ -278,6 +281,7 @@ func commandOutput(ctx context.Context, name string, args ...string) ([]byte, er
 	return out, nil
 }
 
+// UnpackPackages extracts staged packages.
 func UnpackPackages(ctx context.Context, root string) error {
 	archOut, err := commandOutput(ctx, "dpkg", "--print-architecture")
 	if err != nil {
@@ -313,6 +317,7 @@ func UnpackPackages(ctx context.Context, root string) error {
 			return err
 		}
 	}
+
 	// Validate and extract the whole release before replacing any working binary.
 	for _, p := range packages {
 		if err := os.Rename(filepath.Join(tmp, p.Role+".new"), filepath.Join(root, p.Role)); err != nil {

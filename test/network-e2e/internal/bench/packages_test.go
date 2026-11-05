@@ -11,6 +11,7 @@ import (
 
 func packageFixture(t *testing.T, versions ...string) string {
 	t.Helper()
+
 	root := t.TempDir()
 	var sums strings.Builder
 	for i, role := range packageRoles {
@@ -63,7 +64,7 @@ func TestSelectPackagesRejectsInvalidArtifactSet(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(path, append(data, data...), 0600); err != nil {
+			if err := os.WriteFile(path, append(data, data...), 0600); err != nil { //nolint:gosec // fixture path under t.TempDir.
 				t.Fatal(err)
 			}
 		}, "duplicate checksum"},
@@ -92,6 +93,7 @@ func TestSelectPackagesRequiresMatchingVersionsAndArchitecture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(packages) != 3 || packages[0].Version != "1.2.3" {
 		t.Fatalf("packages = %+v", packages)
 	}

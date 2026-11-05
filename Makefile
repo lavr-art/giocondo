@@ -18,6 +18,7 @@ HOSTOS   := $(shell go env GOHOSTOS)
 HOSTARCH := $(shell go env GOHOSTARCH)
 GOOS     ?= $(HOSTOS)
 GOARCH   ?= $(HOSTARCH)
+LINT_CONFIG ?= .golangci.yml
 
 .PHONY: all build test lint proto clean sing-box agent deb
 
@@ -40,7 +41,7 @@ test:
 	go test ./...
 
 lint:
-	golangci-lint run ./...
+	golangci-lint run --config $(LINT_CONFIG) ./...
 
 # protoc: pip install grpcio-tools (python3 -m grpc_tools.protoc) or the system protoc;
 # plugins: go install google.golang.org/protobuf/cmd/protoc-gen-go google.golang.org/grpc/cmd/protoc-gen-go-grpc

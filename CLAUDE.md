@@ -27,26 +27,35 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 
 | Path | Responsibility |
 | --- | --- |
-| `cmd/panel/` | HTTP/gRPC startup, env configuration, CLI: CA, tokens, local-node, provision, probe |
+| `cmd/panel/` | Panel entry point and CLI: CA, tokens, local-node, provision, probe |
+| `internal/app/panelapp/` | Cached dependency construction, HTTP/gRPC wiring and panel resource lifecycle |
 | `cmd/agent/` | Agent startup and a check of its dependency boundary |
-| `internal/admin/` | Shared business operations, validation, events, provisioning, DNS/IP, health checks |
-| `internal/api/` | REST wrapper over admin, route registry and token scopes |
-| `internal/web/` | Web wrapper over admin, sessions, templates, `static/app.js`, `static/style.css` |
-| `internal/store/` | SQLite, models, migrations, traffic, network operation log |
-| `internal/nodehub/` | Sync server, desired config assembly, state reconciliation, WG keys |
-| `internal/agent/` | Sync client, config apply/rollback, statistics and health |
-| `internal/nodeapi/pki/` | CA, certificates, mTLS, node identification |
-| `internal/nodeapi/pb/`, `internal/nodeapi/v2raystats/` | Generated protobuf/gRPC contracts |
-| `internal/singbox/` | Server config model and generator, keys, WG addresses |
-| `internal/subscription/` | Subscriptions, links, sing-box JSON, Mihomo YAML, routing |
-| `internal/provision/` | SSH installation, cloud-init, deploy key, installation jobs |
-| `internal/dns/`, `internal/healthcheck/` | Cloudflare DNS, local and external availability checks |
-| `internal/webhook/` | Panel event queue and delivery |
+| `internal/service/` | Business operations, validation and consumer-owned dependency interfaces |
+| `internal/worker/` | Background schedules/queues: `watchsched`, `healthsched`, `events`, `reconciliation`, `tasks`; on the agent the engine apply queue (`enginequeue`), host network queue (`netqueue`) and the Sync loop (`panelsync`) |
+| `internal/transport/http/api/` | REST adapter with domain-specific service interfaces, route registry and token scopes |
+| `internal/transport/http/web/` | Web adapter with domain-specific service interfaces, sessions, templates, `static/app.js`, `static/style.css` |
+| `internal/model/panel/`, `internal/model/protocol/` | Entities, access policy, protocol parameter models, protocol keys and UUIDs |
+| `internal/repository/sqlite/` | Database open, migration runner and shared helpers (`DB.InTx`, `MapErr`, `Time`); a package per domain beneath it (`users`, `tokens`, `nodes`, `network`, `traffic`, `probes`, `hosts`): `repository.go` with the struct and constructor, one file per query |
+| `migrations/` | SQL schema migrations `NNNN_*.sql`, embedded by `migrations.FS` |
+| `internal/service/nodeconfig/` | Desired config preparation, model conversion, WG and monitor credentials |
+| `internal/service/nodestate/` | Agent admission, reported node/installation state, desired config hashes, traffic records, reconciliation pass |
+| `internal/transport/grpc/nodehub/` | Sync server: stream loop, pb conversion, config delivery and throttling, `Kick` subscriptions |
+| `internal/app/agent/` | Agent config, cached dependency construction and lifecycle; the Sync loop is `internal/worker/panelsync` |
+| `internal/service/engine/`, `internal/repository/enginefs/`, `internal/platform/singboxctl/` | Agent engine runtime (apply journal, rollback, recovery), its durable files and the sing-box command/statistics driver |
+| `internal/platform/hostnet/`, `internal/platform/metrics/`, `internal/clients/panel/`, `internal/model/nodesync/` | Agent host network rules, host metrics, outgoing panel gRPC client and transport-independent Sync messages |
+| `internal/service/pki/`, `internal/repository/pkifs/`, `internal/transport/grpc/nodeauth/` | Certificate issuance, PEM persistence/TLS loading and verified gRPC identities |
+| `internal/transport/grpc/pb/`, `internal/transport/grpc/v2raystats/` | Generated protobuf/gRPC contracts |
+| `internal/service/singbox/` | Server config model and generator, TLS certificates, WG addresses |
+| `internal/service/subscription/`, `internal/transport/http/subapi/` | Subscriptions, links, sing-box JSON, Mihomo YAML, routing; the `GET /sub/<token>` handler |
+| `internal/service/provisioning/`, `internal/platform/installation/`, `internal/clients/ssh/` | Installation policy/jobs, embedded installer artifacts and SSH transport |
+| `internal/clients/cloudflare/`, `internal/platform/protocheck/`, `internal/service/nodeprobe/`, `internal/clients/probepoint/`, `internal/transport/http/probeapi/` | Cloudflare DNS; local protocol checks, node probes, the external probe point client and its server API |
+| `internal/worker/events/`, `internal/clients/webhook/` | In-memory event queue/retries and HTTP delivery |
 | `proto/` | Source `.proto` files; generated with `make proto` |
 | `deploy/apt/` | Delivery via deb packages and the apt repository: deb scripts, systemd units, embedded agent installer, repository script |
 | `install.sh` | One-line server installer (panel + local node), published to GitHub Pages on release |
 | `test/network-e2e/` | Network Docker bench |
 | `build/sing-box/` | A separate Go module for our own core build |
+| `pkg/logger` | `FromCtx`: the process logger (`slog.Default`) with the correlation attributes of a context; `With` stores them |
 | `.github/workflows/` | CI and releases |
 
 Task documentation:
@@ -73,7 +82,10 @@ implemented without code. AmneziaWG is postponed: add it only on explicit reques
 - Check the working copy state before editing. Preserve other people's changes;
   do not use reset/clean and do not overwrite unrelated files.
 - Minimal dependencies: the standard library and existing tools first.
-  Logging is `log/slog`. Network calls and external processes take a context and timeouts.
+  Logging is `log/slog`; panel and agent code take the logger with `logger.FromCtx(ctx)` from `pkg/logger`
+  (checked by `test/architecture`), and boundaries store correlation attributes with `logger.With`
+  (`request_id`, `node`, `operation`; on the agent `panel`). Do not log an error that is also returned.
+  Network calls and external processes take a context and timeouts.
 - Names must explain their purpose; comments explain a reason, an invariant or a constraint.
   Do not add comments that retell the code or long explanations inside functions.
 - Comments, documentation, UI text and commit messages are written in English.
@@ -92,15 +104,21 @@ WireGuard keys, nodes, profiles and traffic live in its database. A lost node
 is restored from the panel state. The agent keeps the current config and the previous one
 for rollback; it has no database of its own and no independent user registry.
 
-- Implement business operations in `admin.Service`; the API and web stay adapters.
+- Implement business operations in focused `internal/service` packages with consumer-owned repository ports. API and web receive separate service interfaces; never pass the whole application to a handler or service.
+- A service package keeps its ports, the service struct with private fields and its `New` constructor in `service.go`, and one file per public operation with that operation's private steps. It exports no interface of its own service; a dependency on another service is a small unexported interface in `service.go`. Services import only the shared `operation`, `singbox` and `nodeconfig` packages from `internal/service`; `test/architecture` checks it.
+- Application structs keep dependencies in private fields. Methods create and cache each dependency; use the same methods for server, CLI and integration-test wiring. Do not create an `Admin` facade, an `assembly` package or a second component container.
+- Split app construction by responsibility: `application.go`, `database.go`, `repositories.go`, `client.go`, `service.go`, `server.go` and `worker.go`. Prepare server dependencies before starting concurrent work; app methods must not race during lazy initialization.
+- Put background loops, timers, queues and goroutine execution in `internal/worker`. Services retain single-pass business operations and depend on an executor interface for background tasks; they do not import concrete workers. App creates, starts, cancels and joins workers.
+- `internal/model` owns models independently of SQLite and engine rendering. Services must not import concrete repositories, clients, platform adapters, transport, workers or application packages. Repositories, clients and platform adapters must not import services, workers or application packages; reviewed exceptions are listed with a reason. The checks are in `test/architecture`.
+- Package names are unique, and module packages are imported without aliases (tests may dot-import a fixture), so a qualifier always names one package. Choose a distinct name for a new package; `test/architecture` checks both rules. Exception: a domain repository in `internal/repository/sqlite/<domain>` is named like the domain and may share its name with `internal/service/<domain>`; files that use both import the repository under an alias (`userrepo`, `noderepo`, ...).
+- Create nodes and their inbounds through `CreateNodeWithInbounds` as one transaction. WG and monitor preparation after commit is retryable; do not report a committed node as a creation failure solely because preparation failed.
   Do not duplicate validation, Store changes, notifications and `Kick` in handlers.
 - Configs are delivered through `nodehub` and `Sync`. Do not bypass this path
   by editing node configs directly from an HTTP handler.
-- `admin.Runtime` is responsible for installing the agent, not for every business operation.
+- `provisioning.Runtime` is responsible for installing the agent, not for every business operation.
   LocalRuntime installs the same agent on the panel machine; the link stays mTLS.
-- The agent may use `internal/agent`, `internal/nodeapi/...`, `internal/singbox`
-  and the necessary stdlib/gRPC dependencies. Do not import the panel, Store, SQLite, subscriptions,
-  provisioning or DNS into the agent. The check is `cmd/agent/deps_test.go`.
+- The agent uses `internal/app/agent`, engine services, node-sync models, outgoing clients and platform adapters. It must not transitively import panel services, panel models or SQLite.
+  The check is `cmd/agent/deps_test.go`.
 - No management port is opened on a node: the agent connects to the panel itself.
   When the panel is lost, sing-box keeps working with the last config.
 - Node budget: 1 CPU, 1 GB RAM; the target agent RSS is 20–30 MB.
@@ -110,8 +128,10 @@ for rollback; it has no database of its own and no independent user registry.
 
 - The client certificate CN equals the node name in the database. An unregistered or
   disabled node is not admitted; the panel and agent certificates have different EKUs.
-- The hub builds the config from the Store and `singbox.Build` and compares sha256.
-  Keep the protection against resending an applied or an already rejected config.
+- `nodestate.Service` admits agents, records reported state and traffic, and prepares desired configs through
+  `nodeconfig.Prepare`, which reads repository ports and calls `singbox.Build`. The hub only converts messages
+  and delivers; transport does not import `nodeconfig` or `singbox` (`test/architecture`).
+  Keep the protection against resending an applied or an already rejected config: it is per-stream state in the hub.
 - Reconciliation runs every 30 seconds and on `Hub.Kick()`, including the desired state of offline nodes.
   Apply throttling: the first new config immediately, the following ones within the interval as one
   freshly built config at its end. Changing a limit without changing the active user set
@@ -125,7 +145,7 @@ for rollback; it has no database of its own and no independent user registry.
   being counted again. Do not lose or double traffic on reconnect.
 - `AGENT_PANEL_ADDR` accepts comma-separated addresses. Keep the sticky failover
   and backoff; the certificate/SNI must match the address in use.
-- On shutdown the panel waits for the gRPC handlers before closing the database.
+- On shutdown the panel cancels HTTP requests and workers, stops transports, waits for active HTTP/gRPC handlers and all nested background tasks, then closes the database. Repeated Close is safe; a rejected second Run must not stop the first.
 
 Our own sing-box build requires `with_v2ray_api`; the build tags and parameters
 in the Makefile and GoReleaser must stay consistent. The statistics service is
@@ -135,10 +155,11 @@ the WG endpoint has no regular per-user counters.
 
 ## Database and contract changes
 
-- Database access is concentrated in the Store. Migrations are `internal/store/migrations/NNNN_*.sql`,
-  applied in `store.Open`. Do not edit already applied migrations;
+- Database access lives in the domain repositories under `internal/repository/sqlite/`; a service receives a field per domain
+  and declares the port it uses. A transaction belongs to one repository method. Migrations are `migrations/NNNN_*.sql`,
+  applied in `sqlite.Open`. Do not edit already applied migrations;
   accompany a schema change with a new migration and a check of upgrading an old database.
-- Time is UTC, written via `dbTime`: fixed-width `2006-01-02T15:04:05Z`.
+- Time is UTC, written via `sqlite.Time`: fixed-width `2006-01-02T15:04:05Z`.
   Traffic days are `YYYY-MM-DD`. Do not break the string comparison of terms in SQLite.
 - Resetting limited traffic changes the offsets and keeps the history.
   An extension counts from the current term, and for an expired one from the current time.
@@ -187,9 +208,11 @@ the WG endpoint has no regular per-user counters.
   an Origin/Sec-Fetch-Site check on POST and a limit on failed logins.
   Do not disable these checks to simplify a handler or a test.
 - CSP forbids inline JS and inline CSS, including `style=`. Use the existing
-  static files and classes; htmx is already in `internal/web/static/`.
+  static files and classes; htmx is already in `internal/transport/http/web/static/`.
   htmx action errors are passed through `HX-Trigger` / `showError`.
 - Background changes keep notifications and `Kick` when the active set changes.
+  `internal/worker/events` owns in-memory queue execution and retry scheduling;
+  `internal/clients/webhook` owns the HTTP request.
   Warning flags are stored in the database so events are not repeated after a restart.
   The webhook queue is in memory: do not promise guaranteed delivery.
 
@@ -198,7 +221,7 @@ the WG endpoint has no regular per-user counters.
 - SSH installation and cloud-init output are implemented; this is not VM creation through a cloud API.
   A password and a supplied private SSH key are used for the operation and are not stored.
   Keep the host key check and remove only the panel deploy key, not other keys.
-- DNS/IP operations run through admin with a log and state checks.
+- DNS/IP operations run through the network service with a log and state checks.
   Keep DNS record ownership, blocking of conflicting operations, retry/rollback.
   A retry is a new log entry; do not erase history and do not overwrite external changes.
 - Online over Sync does not prove VPN availability. Keep the checks of real
@@ -227,6 +250,7 @@ the WG endpoint has no regular per-user counters.
   boundaries, not in place of the code under test; do not require access to production services.
 - Check exact values, the response status/body, the error type, the stored state.
   "There is an error" or "the list is not empty" alone is not enough for a contract.
+- Multi-service SQLite scenarios live in `test/panelintegration` and use the actual application wiring. Application tests cover dependency construction, shared instances and resource lifecycle; worker tests cover scheduling, queues, cancellation and completion.
 - Golden files are the contract of the generator and subscriptions. Update them only for an intentional
   change of the output, explain the change and read the diff. Do not update a golden file to get a green test.
 - For documentation edits, pure packaging or visual styling, do not create a fake test.
@@ -249,10 +273,10 @@ The current CI runs the Go tests and lint, while the external checks below run s
 | Change | Additional check |
 | --- | --- |
 | Concurrency, Sync, counters, background operations | `go test -race ./...` |
-| Server config | `make sing-box`, then `PATH="$PWD/bin:$PATH" go test -count=1 ./internal/singbox` |
-| Client JSON | `PATH="$PWD/bin:$PATH" SINGBOX_EXTRA=/path/to/sing-box-1.12 go test -count=1 ./internal/subscription` |
-| Mihomo YAML | `MIHOMO_CHECK=1 go test -count=1 ./internal/subscription`, requires `mihomo` in PATH |
-| REST contract | `go test -count=1 ./internal/api` |
+| Server config | `make sing-box`, then `PATH="$PWD/bin:$PATH" go test -count=1 ./internal/service/singbox` |
+| Client JSON | `PATH="$PWD/bin:$PATH" SINGBOX_EXTRA=/path/to/sing-box-1.12 go test -count=1 ./internal/service/subscription` |
+| Mihomo YAML | `MIHOMO_CHECK=1 go test -count=1 ./internal/service/subscription`, requires `mihomo` in PATH |
+| REST contract | `go test -count=1 ./internal/transport/http/api` |
 | Agent dependencies | `go test -count=1 ./cmd/agent` |
 | DNS/IP, moving and node availability | `sh test/network-e2e/run.sh` in the isolated Docker bench |
 | `install.sh` | `sh test/network-e2e/run.sh installer` (clean container, traffic, idempotent second run) |
@@ -270,8 +294,8 @@ make proto                                      # requires protoc and the Go plu
 make agent GOOS=linux GOARCH=amd64               # bin/agent-linux-amd64
 make sing-box GOOS=linux GOARCH=amd64            # bin/sing-box-linux-amd64
 # Only for an intentional format change, then check the diff:
-go test ./internal/singbox -update
-go test ./internal/subscription -update
+go test ./internal/service/singbox -update
+go test ./internal/service/subscription -update
 ```
 
 ## Definition of done

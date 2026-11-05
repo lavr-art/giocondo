@@ -1,3 +1,4 @@
+// Package main runs the network benchmark harness.
 package main
 
 import (
@@ -12,8 +13,9 @@ import (
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-	if err := bench.Run(ctx, os.Args[1:], os.Stdout); err != nil {
+	err := bench.Run(ctx, os.Args[1:], os.Stdout)
+	cancel()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "bench:", err)
 		os.Exit(1)
 	}

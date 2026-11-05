@@ -48,6 +48,7 @@ func TestAgentUpgrade(t *testing.T) {
 		return b.boolField(n, "agent_connected"), nil
 	}
 	stop()
+
 	// Keep historical journals; a pre-runtime agent has no engine journal.
 	execute("sh", "-c", "p=/var/lib/giocondo-vpn/agent/sing-box; if [ -e \"$p\" ]; then mv \"$p\" \"$p-before-upgrade-$(date +%s%N)\"; fi")
 	execute("install", "-m", "0755", "/tmp/giocondo-agent-legacy", "/usr/bin/giocondo-vpn-agent")

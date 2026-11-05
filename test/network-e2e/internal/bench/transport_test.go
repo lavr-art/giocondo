@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,7 @@ func TestDNSUDPAndFragmentedTCPQueries(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	config := net.ListenConfig{}
 	udp, err := config.ListenPacket(ctx, "udp", "127.0.0.1:0")
 	if err != nil {
@@ -66,8 +68,12 @@ func TestDNSUDPAndFragmentedTCPQueries(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				packet := binary.BigEndian.AppendUint16(nil, uint16(len(raw)))
+				if len(raw) > math.MaxUint16 {
+					t.Fatalf("query too large for TCP framing: %d bytes", len(raw))
+				}
+				packet := binary.BigEndian.AppendUint16(nil, uint16(len(raw))) //nolint:gosec // the length is bounds-checked against math.MaxUint16 above.
 				packet = append(packet, raw...)
+
 				// TCP may split both the length prefix and the question at any byte.
 				for _, b := range packet {
 					if _, err := conn.Write([]byte{b}); err != nil {
@@ -140,7 +146,7 @@ func TestControlConcurrentDNSAndAPIUpdates(t *testing.T) {
 		workers.Go(func() {
 			for iteration := range 10 {
 				body := fmt.Sprintf(`{"name":"node.test","type":"A","content":"192.0.2.%d","ttl":%d}`, worker+1, iteration+60)
-				req := httptest.NewRequest("PATCH", "/zones/test/dns_records/record-1", strings.NewReader(body))
+				req := httptest.NewRequestWithContext(context.Background(), "PATCH", "/zones/test/dns_records/record-1", strings.NewReader(body))
 				req.Header.Set("Authorization", "Bearer local-test-token")
 				w := httptest.NewRecorder()
 				fixture.ServeHTTP(w, req)
@@ -168,10 +174,11 @@ func TestControlConcurrentDNSAndAPIUpdates(t *testing.T) {
 }
 
 func TestHTTPRejectsUntrustedTLSAndCancelledRequests(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("should not reach client")) }))
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("should not reach client")) }))
 	defer server.Close()
 	var out bytes.Buffer
 	err := HTTPRequest(context.Background(), http.DefaultClient, "GET", server.URL, "", "", &out)
+
 	if err == nil || !strings.Contains(err.Error(), "certificate") {
 		t.Fatalf("untrusted TLS error = %v", err)
 	}
@@ -181,10 +188,12 @@ func TestHTTPRejectsUntrustedTLSAndCancelledRequests(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	err = HTTPRequest(ctx, server.Client(), "GET", server.URL, "", "", &out)
+
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled request error = %v", err)
 	}
 	_, err = readBounded(strings.NewReader("oversized"), 4)
+
 	if err == nil || err.Error() != "response exceeds size limit" {
 		t.Fatalf("bounded read error = %v", err)
 	}

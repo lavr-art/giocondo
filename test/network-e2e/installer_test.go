@@ -11,12 +11,15 @@ import (
 )
 
 const installerIP = "172.30.77.31"
+
 const installerCommand = "curl -fsSL http://control:8000/repo/install.sh -o /root/install.sh && sh /root/install.sh --ip " + installerIP + " --http --repo http://control:8000/repo --yes"
 
 var stateFiles = []string{"/etc/giocondo-vpn/panel.env", "/etc/giocondo-vpn/agent/agent.crt", "/var/lib/giocondo-vpn/panel/pki/server.crt"}
+
 var services = []string{"giocondo-vpn-panel", "giocondo-vpn-agent", "giocondo-vpn-sing-box"}
 
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'" }
+
 func (b *bench) installerAPI(method, path string, body any) (any, error) {
 	data := ""
 	if body != nil {
@@ -29,6 +32,7 @@ func (b *bench) installerAPI(method, path string, body any) (any, error) {
 	command := ". /etc/giocondo-vpn/panel.env && curl -fsS --max-time 25 -X " + shellQuote(method) + " -H \"Authorization: Bearer $(cat /root/token)\" -H 'Content-Type: application/json'" + data + " \"http://127.0.0.1:8080${PANEL_ADMIN_PATH}/api/" + path + "\""
 	return decode(b.shell(command))
 }
+
 func (b *bench) mustInstallerAPI(method, path string, body any) any {
 	b.t.Helper()
 	v, e := b.installerAPI(method, path, body)
@@ -37,9 +41,11 @@ func (b *bench) mustInstallerAPI(method, path string, body any) any {
 	}
 	return v
 }
+
 func (b *bench) snapshot() string {
 	return b.checked(b.shell("sha256sum "+strings.Join(stateFiles, " "))) + b.checked(b.shell("systemctl show -p ActiveEnterTimestamp "+strings.Join(services, " ")))
 }
+
 func (b *bench) installerNodeApplied() (bool, error) {
 	v, e := b.installerAPI("GET", "nodes", nil)
 	if e != nil {
@@ -52,10 +58,13 @@ func (b *bench) installerNodeApplied() (bool, error) {
 	n := obj(nodes[0])
 	return n["status"] == "online" && !b.boolField(n, "dirty") && b.stringField(n, "apply_error") == "", nil
 }
+
 func (b *bench) installerTraffic(port int) bool {
 	return b.traffic(port, "https://192.0.2.200:8443/installer-challenge.txt", strings.Repeat("b", 64))
 }
+
 func TestInstaller(t *testing.T) { b := newBench(t); b.installer(nil) }
+
 func (b *bench) installer(exercise func(object, map[string]object)) {
 	b.write("installer-challenge.txt", []byte(strings.Repeat("b", 64)))
 	b.wait("systemd ready in the clean server", 3*time.Minute, func() (bool, error) {
@@ -146,18 +155,21 @@ func (b *bench) installer(exercise func(object, map[string]object)) {
 	b.liveClients(names)
 	b.reportFile("installer-results.txt")
 }
+
 func (b *bench) upgradeTraffic(selected map[string]object) {
 	for i, kind := range sortedKeys(selected) {
 		port := 19101 + i
 		b.wait("unchanged client after upgrade: "+kind, 2*time.Minute, func() (bool, error) { return b.installerTraffic(port), nil })
 	}
 }
+
 func (b *bench) identity() string {
 	out := b.checked(b.shell("find /etc/giocondo-vpn/agent /var/lib/giocondo-vpn/panel/pki -type f -exec sha256sum {} +; sha256sum /etc/giocondo-vpn/panel.env /etc/giocondo-vpn/agent.env /etc/giocondo-vpn/sing-box/config.json"))
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	sortStrings(lines)
 	return strings.Join(lines, "\n")
 }
+
 func packageVersionCommand(name string) string {
 	return fmt.Sprintf("dpkg-query -W -f='${Version}' %s", name)
 }

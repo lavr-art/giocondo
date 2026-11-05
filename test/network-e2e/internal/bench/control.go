@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/netip"
@@ -39,6 +40,7 @@ type Control struct {
 	client         *http.Client
 }
 
+// NewControl constructs the benchmark control server.
 func NewControl(root, upstream string) (*Control, error) {
 	c := &Control{root: root, upstream: strings.TrimRight(upstream, "/"), records: []fixtureRecord{}, files: http.FileServer(http.Dir(root)), client: &http.Client{Timeout: 25 * time.Second}}
 	data, err := os.ReadFile(filepath.Join(root, "records.json"))
@@ -68,12 +70,12 @@ func (c *Control) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if path == "/health/challenge" && r.Method == http.MethodGet {
-		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, c.upstream+r.URL.RequestURI(), nil)
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, c.upstream+r.URL.RequestURI(), nil) //nolint:gosec // the harness proxies to its own configured upstream.
 		if err != nil {
 			http.Error(w, "invalid challenge upstream", http.StatusBadGateway)
 			return
 		}
-		res, err := c.client.Do(req)
+		res, err := c.client.Do(req) //nolint:gosec // see the request above.
 		if err != nil {
 			http.Error(w, "challenge upstream unavailable", http.StatusBadGateway)
 			return
@@ -205,13 +207,14 @@ func (c *Control) events(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid JSON body", 400)
 			return
 		}
+
 		// Compact webhook JSON so each persisted event occupies exactly one line.
 		data, err := json.Marshal(data)
 		if err != nil {
 			http.Error(w, "invalid JSON body", 400)
 			return
 		}
-		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			http.Error(w, "open event log failed", 500)
 			return
@@ -228,6 +231,7 @@ func (c *Control) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AnswerDNS answers a DNS query for the benchmark client.
 func (c *Control) AnswerDNS(raw []byte) ([]byte, error) {
 	var request dnsmessage.Message
 	if err := request.Unpack(raw); err != nil {
@@ -278,7 +282,8 @@ func (c *Control) serveDNSUDP(ctx context.Context, conn net.PacketConn) error {
 		}
 		n, addr, err := conn.ReadFrom(buf)
 		if err != nil {
-			if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+			var timeout net.Error
+			if errors.As(err, &timeout) && timeout.Timeout() {
 				continue
 			}
 			return err
@@ -324,7 +329,10 @@ func (c *Control) serveDNSTCP(ctx context.Context, listener net.Listener) error 
 				if err != nil {
 					return
 				}
-				binary.BigEndian.PutUint16(length[:], uint16(len(answer)))
+				if len(answer) > math.MaxUint16 {
+					return
+				}
+				binary.BigEndian.PutUint16(length[:], uint16(len(answer))) //nolint:gosec // the length is bounds-checked against math.MaxUint16 above.
 				if _, err := io.Copy(conn, strings.NewReader(string(append(length[:], answer...)))); err != nil {
 					return
 				}
@@ -333,6 +341,7 @@ func (c *Control) serveDNSTCP(ctx context.Context, listener net.Listener) error 
 	}
 }
 
+// RunControl starts the benchmark control server.
 func RunControl(ctx context.Context, root string) error {
 	fixture, err := NewControl(root, "http://panel:8081")
 	if err != nil {
@@ -365,6 +374,7 @@ func RunControl(ctx context.Context, root string) error {
 	defer func() { _ = secure.Close() }()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	httpServer := &http.Server{Handler: fixture, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 30 * time.Second}
 	tlsServer := &http.Server{Handler: fixture, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 30 * time.Second}
 	errorsOut := make(chan error, 4)
@@ -384,6 +394,7 @@ func RunControl(ctx context.Context, root string) error {
 	_ = tcp.Close()
 	shutdown, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelShutdown()
+
 	_ = httpServer.Shutdown(shutdown)
 	_ = tlsServer.Shutdown(shutdown)
 	if errors.Is(err, context.Canceled) {

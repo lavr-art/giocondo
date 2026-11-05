@@ -25,7 +25,8 @@ func TestControlAPIAuthenticatesAndPersistsRecords(t *testing.T) {
 	defer server.Close()
 	request := func(method, path, body string, authorized bool) (int, []byte) {
 		t.Helper()
-		req, err := http.NewRequest(method, server.URL+path, strings.NewReader(body))
+
+		req, err := http.NewRequestWithContext(context.Background(), method, server.URL+path, strings.NewReader(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +69,7 @@ func TestControlAPIAuthenticatesAndPersistsRecords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest("GET", "/zones/test/dns_records?name=node.test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/zones/test/dns_records?name=node.test", nil)
 	req.Header.Set("Authorization", "Bearer local-test-token")
 	w := httptest.NewRecorder()
 	reloaded.ServeHTTP(w, req)
@@ -109,7 +110,7 @@ func TestControlEventsStaticFilesAndChallenge(t *testing.T) {
 		{"GET", "/health/challenge?challenge=abc", "", 202, "abc"},
 	} {
 		w := httptest.NewRecorder()
-		fixture.ServeHTTP(w, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
+		fixture.ServeHTTP(w, httptest.NewRequestWithContext(context.Background(), tc.method, tc.path, strings.NewReader(tc.body)))
 		if w.Code != tc.status || !strings.Contains(w.Body.String(), tc.contains) {
 			t.Fatalf("%s %s: %d %s", tc.method, tc.path, w.Code, w.Body.String())
 		}
@@ -118,7 +119,7 @@ func TestControlEventsStaticFilesAndChallenge(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	fixture.ServeHTTP(w, httptest.NewRequest("GET", "/events", nil))
+	fixture.ServeHTTP(w, httptest.NewRequestWithContext(context.Background(), "GET", "/events", nil))
 	if w.Code != 500 {
 		t.Fatalf("corrupt event log status = %d", w.Code)
 	}
@@ -200,6 +201,7 @@ func TestRequestChecksStatusAndPreservesAuthorization(t *testing.T) {
 	}
 	out.Reset()
 	err := HTTPRequest(context.Background(), server.Client(), "GET", server.URL+"/bad", "", "secret", &out)
+
 	if err == nil || !strings.Contains(err.Error(), "403") || !strings.Contains(err.Error(), "forbidden") {
 		t.Fatalf("HTTP error = %v", err)
 	}

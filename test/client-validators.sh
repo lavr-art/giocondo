@@ -24,4 +24,4 @@ fi
 export PATH
 command -v sing-box >/dev/null
 export SINGBOX_EXTRA="$tools/floor/sing-box" MIHOMO_CHECK=1
-go test -count=1 ./internal/singbox ./internal/subscription
+go test -count=1 ./internal/service/singbox ./internal/service/subscription

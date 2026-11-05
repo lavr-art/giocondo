@@ -4,7 +4,7 @@
 syntax = "proto3";
 
 package v2ray.core.app.stats.command;
-option go_package = "github.com/artemlavr/giocondo/internal/nodeapi/v2raystats";
+option go_package = "github.com/artemlavr/giocondo/internal/transport/grpc/v2raystats";
 
 message Stat {
   string name = 1;

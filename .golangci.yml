@@ -1,0 +1,118 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - err113
+    - funlen
+    - gochecknoglobals
+    - godot
+    - godox
+    - inamedparam
+    - ireturn
+    - mnd
+    - noinlineerr
+    - nonamedreturns
+    - nilnil
+    - perfsprint
+    - tagalign
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wrapcheck
+    - exhaustruct
+    - exhaustruct_v5
+    - wsl
+    # nolintlint deliberately remains enabled from the existing config.
+
+  settings:
+    exhaustive:
+      check:
+        - switch
+        - mapliteral
+      default-signifies-exhaustive: true
+      # In golangci-lint v2.15.0, this replaces explicit-exhaustive-switch.
+      explicit-exhaustive: true
+
+    gocognit:
+      min-complexity: 25
+
+    gocritic:
+      disabled-checks:
+        - appendAssign
+
+    gocyclo:
+      min-complexity: 29
+
+    interfacebloat:
+      max: 50
+
+    lll:
+      line-length: 120
+      tab-width: 1
+
+    nestif:
+      min-complexity: 10
+
+    revive:
+      rules:
+        - name: package-comments
+          severity: warning
+          disabled: true
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
+    gosec:
+      excludes:
+        - G115
+
+    wsl:
+      allow-assign-and-call: true
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - _gen\.go$
+      - _test\.go$
+      - autotests
+      - test
+      - cmd
+      - tmp
+      - tools
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/artemlavr/giocondo
+  exclusions:
+    generated: lax
+    paths:
+      - _gen\.go$
+      - _test\.go$
+      - autotests
+      - test
+      - cmd
+      - tmp
+      - tools
+      - third_party$
+      - builtin$
+      - examples$
+
+issues:
+  max-same-issues: 50

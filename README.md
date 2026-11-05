@@ -6,7 +6,7 @@
 
 A self-hosted control panel for personal [sing-box](https://sing-box.sagernet.org/) VPN nodes.
 
-The panel stores all state: users, terms, traffic limits, WireGuard keys, nodes and traffic history.
+The panel stores all state: users, subscription terms, traffic limits, protocol credentials, nodes and traffic history.
 A small agent on every node receives its config from the panel and manages sing-box through an engine
 driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box and Mihomo/Clash clients.
 
@@ -55,6 +55,11 @@ driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Ka
 The panel builds each node's desired config from its database, the agent applies it and reports
 the applied hash, health and traffic deltas back over the same stream.
 
+Application packages assemble and retain the database, repositories, clients, services,
+servers and workers. Services implement individual operations; `internal/worker` owns
+background schedules, queues and task execution. HTTP and gRPC handlers receive the
+specific capabilities they need.
+
 ## Quick start
 
 Install the panel and a node on one clean Debian 11+ / Ubuntu 22.04+ server (amd64 or arm64), as root:
@@ -73,7 +78,9 @@ bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh) --http
 The IP certificate lives about 6 days and Caddy renews it, so port 80/tcp must stay open. If the certificate
 is not issued, the installation fails and is rolled back.
 
-The installer is idempotent: running it again changes nothing that is already in place.
+The installer preserves settings and keys on repeat runs; available package updates are installed.
+Running the same version again does not restart healthy services. See [controlled upgrades and recovery](docs/upgrades.md)
+for backups, compatibility, explicit breaking-version opt-in and manual recovery.
 
 Open the admin UI:
 
@@ -94,6 +101,7 @@ install.sh uninstall [--purge]
 install.sh --ip A            # public IPv4 when the default route has a private address
 install.sh --http            # plain HTTP subscriptions instead of HTTPS by IP
 install.sh --version V       # pin the package version
+install.sh --allow-breaking-upgrade --yes  # explicitly allow a new compatibility branch
 install.sh --reconfigure --domain D | --ip A | --http   # change the public address or mode
 install.sh --yes             # non-interactive
 ```
@@ -196,17 +204,24 @@ Repository layout:
 | Path | Contents |
 | --- | --- |
 | `cmd/panel`, `cmd/agent` | Panel and agent entry points, panel CLI |
-| `internal/admin` | Business operations shared by the web UI and the API |
-| `internal/api`, `internal/web` | REST API and web UI |
-| `internal/store` | SQLite storage and migrations |
-| `internal/nodehub`, `internal/agent` | Both sides of the Sync link |
-| `internal/singbox`, `internal/subscription` | Server config and client subscription generators |
-| `internal/provision`, `internal/dns`, `internal/healthcheck`, `internal/webhook` | Provisioning, DNS, checks, events |
-| `proto/` | gRPC contracts |
+| `internal/app/panelapp`, `internal/app/agent` | Application construction, dependency lifetime and transport/worker wiring |
+| `internal/model/panel`, `internal/model/protocol` | Entities, user access policy and protocol parameters |
+| `internal/service` | Focused business services with consumer-owned dependency interfaces |
+| `internal/worker` | User watching, node checks, event delivery, reconciliation, task execution and agent engine/network workers |
+| `internal/service/nodeconfig` | Desired configuration preparation and WG/monitor credentials |
+| `internal/transport/http/api`, `internal/transport/http/web` | REST API and web UI |
+| `internal/repository/sqlite` | SQLite connection and shared helpers; one repository package per domain beneath it |
+| `migrations` | SQLite schema migrations, embedded and applied on open |
+| `internal/transport/grpc/nodehub`, `internal/app/agent` | Both sides of the Sync link |
+| `internal/service/singbox`, `internal/service/subscription` | Server config and client subscription generators |
+| `internal/platform`, `internal/clients` | Installer artifacts, engine/system adapters, SSH, DNS, probe and webhook clients |
+| `proto/`, `internal/transport/grpc/pb`, `internal/transport/grpc/v2raystats` | Protobuf sources and generated gRPC contracts |
 | `deploy/apt/` | deb scripts, systemd units, agent installer, apt repository script |
 | `install.sh` | One-line server installer (panel + local node) |
 | `build/sing-box/` | Separate Go module pinning the sing-box version |
 | `test/network-e2e/` | Docker network test bench |
+
+See [architecture boundaries](docs/architecture.md) for dependency rules and creation guarantees.
 
 ## Testing
 
@@ -215,19 +230,43 @@ go test ./...
 go test -race ./...
 ```
 
+Installer and package-hook regressions are included in these commands; to run them
+alone, use `go test -count=1 -v ./test/installer`. Debian package-hook checks require
+Linux with `dpkg` and GNU tar/coreutils and are explicitly skipped on other systems.
+
 Some tests validate generated configs with external binaries and are skipped when they are missing:
 
 ```sh
-make sing-box && PATH="$PWD/bin:$PATH" go test -count=1 ./internal/singbox
-MIHOMO_CHECK=1 go test -count=1 ./internal/subscription   # requires mihomo in PATH
+make sing-box && PATH="$PWD/bin:$PATH" go test -count=1 ./internal/service/singbox
+MIHOMO_CHECK=1 go test -count=1 ./internal/service/subscription   # requires mihomo in PATH
 ```
 
 End-to-end network tests run in an isolated Docker bench (never on real nodes):
 
 ```sh
+make deb                              # real release packages used by the bench
 sh test/network-e2e/run.sh              # DNS/IP operations, node availability
 sh test/network-e2e/run.sh installer    # install.sh on a clean container
+sh test/network-e2e/run.sh upgrade      # previous stable -> candidate and manual recovery
 ```
+
+The bench uses Go test scenarios behind the `e2e` build tag and a Go helper built
+for the host and Docker architecture. Go runs on the host; the containers need
+neither Go nor Python. Ordinary `go test ./...` does not start Docker or fetch
+baseline packages. See [upgrade verification](docs/upgrades.md#release-verification)
+for candidate and baseline package selection.
+
+After a successful network run, these checks continue the existing bench:
+
+```sh
+# Supply an earlier Linux agent at bin/network-e2e/agent-legacy first.
+sh test/network-e2e/run.sh agent-upgrade
+PANEL_HEALTH_INTERVAL=5m sh test/network-e2e/run.sh cadence
+```
+
+The cadence check takes about 13 minutes. `run.sh fresh` archives the previous
+network state and results before starting over; `logs` and `down` inspect and stop
+the bench. Reports remain under `bin/network-e2e/`.
 
 ## Releases
 

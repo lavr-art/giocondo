@@ -3,7 +3,7 @@
 syntax = "proto3";
 
 package giocondo.node.v1;
-option go_package = "github.com/artemlavr/giocondo/internal/nodeapi/pb";
+option go_package = "github.com/artemlavr/giocondo/internal/transport/grpc/pb";
 
 service NodeService {
   rpc Sync(stream AgentMessage) returns (stream PanelMessage);

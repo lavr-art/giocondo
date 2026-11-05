@@ -24,9 +24,13 @@ build with `with_v2ray_api` in `/usr/lib/giocondo-vpn/sing-box`, unit `giocondo-
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-`.github/workflows/release.yml`: GoReleaser (`.goreleaser.yaml`) builds the packages and the GitHub Release,
-then `deploy/apt/update-repo.sh` adds them to `gh-pages` and signs `Release`/`InRelease`.
+`.github/workflows/release.yml` first runs source checks, then GoReleaser (`.goreleaser.yaml`) builds unpublished
+candidates. Real package install, previous-stable upgrade and recovery tests run on amd64 and arm64.
+Only the tested artifacts are uploaded to a draft GitHub Release; `deploy/apt/update-repo.sh` adds them to
+`gh-pages` and signs `Release`/`InRelease`, and the release is then made public.
 Old versions stay in `pool/`.
+
+See [controlled upgrades and recovery](upgrades.md) for the supported version route and backup/restore procedure.
 
 Locally: `make deb` (snapshot in `dist/`, requires at least one commit).
 
@@ -98,12 +102,16 @@ bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh) --http        
   already created the local node credentials, it keeps the matching initial panel settings/certificates for a safe retry.
 - The admin path and password are in `/etc/giocondo-vpn/panel.env`; the script does not print them.
 
-The check is `sh test/network-e2e/run.sh installer`: a clean container, client traffic over VLESS and Hysteria2,
+After `make deb`, the check is `sh test/network-e2e/run.sh installer`: actual release packages in a clean container,
+client traffic over VLESS, Hysteria2 and WireGuard,
 an unchanged second run, recovery of a stopped agent (all in `--http` mode), and the generated domain and IP Caddy
 HTTPS proxies with a verified local certificate, including that the IP site does not expose the admin UI.
 Public ACME issuance by domain or IP needs a real reachable server and is checked separately.
 File preservation, reconfiguration, rollback and CA bootstrap regressions run with
-`python3 -m unittest discover -s test/installer -v` (also in CI); run `shellcheck install.sh` for shell lint.
+`go test -count=1 -v ./test/installer` (included in the ordinary Go suite and CI);
+Debian package-hook regressions run on Linux with GNU tar/coreutils and `dpkg`.
+Run `shellcheck install.sh` for shell lint. Network scenarios are opt-in Go tests
+under the `e2e` build tag, launched by `run.sh`; the bench has no Python dependency.
 
 ## Panel from apt
 

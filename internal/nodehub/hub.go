@@ -204,7 +204,15 @@ func (h *Hub) Sync(stream pb.NodeService_SyncServer) error {
 	// it is not resent until it changes. throttleC is armed when a new config waits for
 	// the end of the interval since the previous send.
 	agentHash, failedHash, sentHash := hello.GetConfigHash(), "", ""
-	applied(agentHash, "")
+	runtimeState := engineRuntimeState(hello.GetCapabilities(), hello.GetEngines())
+	runtimeBlocked := false
+	if runtimeState != nil {
+		agentHash, failedHash = runtimeState.GetAppliedHash(), runtimeState.GetRejectedHash()
+		runtimeBlocked = runtimeState.GetPhase() == "blocked"
+		applied(agentHash, runtimeState.GetError())
+	} else {
+		applied(agentHash, "")
+	}
 	var lastSent time.Time
 	var throttle *time.Timer
 	var throttleC <-chan time.Time
@@ -267,7 +275,7 @@ func (h *Hub) Sync(stream pb.NodeService_SyncServer) error {
 			log.Error("build config", "err", err)
 			return nil // the node stays on its current config
 		}
-		if hash == agentHash || hash == failedHash || hash == sentHash {
+		if runtimeBlocked || hash == agentHash || hash == failedHash || hash == sentHash {
 			return nil
 		}
 		if wait := applyEvery - time.Since(lastSent); !lastSent.IsZero() && wait > 0 {
@@ -364,7 +372,11 @@ func (h *Hub) Sync(stream pb.NodeService_SyncServer) error {
 			case *pb.AgentMessage_Health:
 				hl := msg.Health
 				touch(store.NodeOnline)
-				if hl.GetConfigHash() != "" && hl.GetConfigHash() != agentHash {
+				if state := engineRuntimeState(hello.GetCapabilities(), hl.GetEngines()); state != nil {
+					agentHash, failedHash = state.GetAppliedHash(), state.GetRejectedHash()
+					runtimeBlocked = state.GetPhase() == "blocked"
+					applied(agentHash, state.GetError())
+				} else if runtimeState == nil && hl.GetConfigHash() != "" && hl.GetConfigHash() != agentHash {
 					agentHash = hl.GetConfigHash()
 					applied(agentHash, "")
 				}
@@ -554,4 +566,24 @@ func short(h string) string {
 		return h[:12]
 	}
 	return h
+}
+
+// Legacy peers have no capabilities; their existing hash semantics stay unchanged.
+func engineRuntimeState(capabilities []string, states []*pb.EngineState) *pb.EngineState {
+	supported := false
+	for _, capability := range capabilities {
+		if capability == "engine-runtime-v1" {
+			supported = true
+			break
+		}
+	}
+	if !supported {
+		return nil
+	}
+	for _, state := range states {
+		if state.GetId() == "sing-box" {
+			return state
+		}
+	}
+	return nil
 }

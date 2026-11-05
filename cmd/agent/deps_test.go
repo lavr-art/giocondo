@@ -17,6 +17,8 @@ var forbiddenAgentDeps = []string{
 	"github.com/artemlavr/giocondo/internal/dns",
 	"github.com/artemlavr/giocondo/internal/bot",
 	"modernc.org/sqlite",
+	"github.com/sagernet/sing-box",
+	"github.com/xtls/xray-core",
 }
 
 func TestAgentDoesNotImportPanel(t *testing.T) {
@@ -32,7 +34,7 @@ func TestAgentDoesNotImportPanel(t *testing.T) {
 	}
 	for _, dep := range strings.Fields(string(out)) {
 		for _, bad := range forbiddenAgentDeps {
-			if dep == bad || strings.HasPrefix(dep, bad+"/") {
+			if strings.EqualFold(dep, bad) || strings.HasPrefix(strings.ToLower(dep), strings.ToLower(bad)+"/") {
 				t.Errorf("agent depends on %s: agent must not include panel code", dep)
 			}
 		}

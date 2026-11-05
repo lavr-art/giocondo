@@ -84,7 +84,11 @@ def main():
  # Drop public listeners only on IP .11; SSH/agent control traffic remain intact.
  for protocol,ports in [('tcp','443'),('udp','8443,51820')]:
   exec_('node1','iptables','-t','raw','-I','PREROUTING','1','-d','172.30.77.11','-p',protocol,'-m','multiport','--dports',ports,'-j','DROP')
- wait('warning after three failures with live agent',lambda:node()['warning'] and node()['agent_connected'],1200 if os.environ.get('PANEL_HEALTH_INTERVAL')=='5m' else 300)
+ def all_probes_failed():
+  current=node()
+  probes=[p for p in current['probes'] if p['ip']=='172.30.77.11']
+  return current['warning'] and current['agent_connected'] and len(probes)==6 and all(p['failures']==3 for p in probes)
+ wait('warning after three failures with live agent',all_probes_failed,1200 if os.environ.get('PANEL_HEALTH_INTERVAL')=='5m' else 300)
  blocked=node();assert all(p['failures']==3 for p in blocked['probes'] if p['ip']=='172.30.77.11')
  assert not client_request('hy2') and not client_request('wg')
  for kind in selected:

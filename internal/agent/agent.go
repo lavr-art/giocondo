@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/artemlavr/giocondo/internal/agent/engine"
 	"github.com/artemlavr/giocondo/internal/nodeapi/pb"
 )
 
@@ -23,17 +24,18 @@ type Panel struct {
 type Agent struct {
 	NetworkApplier func(context.Context, *pb.NetworkConfig) error
 	Panels         []Panel // primary address and fallbacks, in order of preference
-	Applier        *Applier
-	Collector      *Collector // nil means statistics are not collected
+	Engines        *engine.Manager
 	Version        string
 	StatsInterval  time.Duration
 	HealthInterval time.Duration
 	Log            *slog.Logger
 
-	acc        Accumulator
-	instanceID string
-	started    time.Time
-	procDir    string // "/proc"; replaced in tests
+	acc            Accumulator
+	instanceID     string
+	started        time.Time
+	networkJobs    chan *pb.NetworkConfig
+	networkResults chan *pb.ApplyResult
+	procDir        string // "/proc"; replaced in tests
 }
 
 const (
@@ -60,16 +62,6 @@ func (a *Agent) init() {
 		a.instanceID = hex.EncodeToString(b)
 	}
 	a.started = time.Now()
-	if a.Collector != nil {
-		prev := a.Applier.BeforeRestart
-		a.Applier.BeforeRestart = func(ctx context.Context) {
-			// Restarting sing-box resets the counters: collect them first.
-			a.collect(ctx)
-			if prev != nil {
-				prev(ctx)
-			}
-		}
-	}
 }
 
 // Run works until ctx is cancelled: connects to the panel and reconnects after drops.
@@ -80,9 +72,22 @@ func (a *Agent) Run(ctx context.Context) error {
 		return errors.New("no panel addresses")
 	}
 	a.init()
-	if a.Collector != nil {
-		go a.collectLoop(ctx)
+	if a.Engines == nil || a.Engines.Runtime("sing-box") == nil {
+		return errors.New("sing-box runtime is required")
 	}
+	for _, state := range a.Engines.States() {
+		r := a.Engines.Runtime(state.ID)
+		r.OnTraffic = a.acc.Add
+		if err := r.Open(ctx); err != nil {
+			a.Log.Error("engine recovery blocked", "engine", state.ID, "err", err)
+		}
+	}
+	a.Engines.Start(ctx)
+	a.Engines.Monitor(ctx, a.StatsInterval, a.HealthInterval)
+	defer a.Engines.Wait()
+	a.networkJobs = make(chan *pb.NetworkConfig, 1)
+	a.networkResults = make(chan *pb.ApplyResult, 1)
+	go a.networkLoop(ctx)
 	backoff := backoffFirst
 	cur, failed := 0, 0 // failed counts consecutive failures since the last long session
 	for {
@@ -115,33 +120,6 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 }
 
-func (a *Agent) collectLoop(ctx context.Context) {
-	t := time.NewTicker(a.StatsInterval)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			a.collect(ctx)
-		}
-	}
-}
-
-func (a *Agent) collect(ctx context.Context) {
-	if a.Collector == nil {
-		return
-	}
-	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	t, err := a.Collector.Collect(cctx)
-	if err != nil {
-		a.Log.Debug("collect stats", "err", err) // sing-box may not be running yet
-		return
-	}
-	a.acc.Add(t)
-}
-
 func (a *Agent) session(ctx context.Context, p Panel) error {
 	sctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -151,11 +129,11 @@ func (a *Agent) session(ctx context.Context, p Panel) error {
 	}
 	send := func(m *pb.AgentMessage) error { return stream.Send(m) }
 
+	states := a.engineStates()
+	legacy := legacyEngineState(states)
 	hello := &pb.Hello{
-		AgentVersion:   a.Version,
-		SingboxVersion: a.Applier.Version(ctx),
-		ConfigHash:     a.Applier.CurrentHash(),
-		InstanceId:     a.instanceID,
+		AgentVersion: a.Version, SingboxVersion: legacy.Version, ConfigHash: legacy.AppliedHash,
+		InstanceId: a.instanceID, Capabilities: []string{"engine-runtime-v1"}, Engines: states,
 	}
 	if err := send(&pb.AgentMessage{Msg: &pb.AgentMessage_Hello{Hello: hello}}); err != nil {
 		return fmt.Errorf("send hello: %w", err)
@@ -193,6 +171,35 @@ func (a *Agent) session(ctx context.Context, p Panel) error {
 		}
 	}
 
+	pending := map[string]*engine.Future{}
+	resultsT := time.NewTicker(50 * time.Millisecond)
+	resultsT.Stop()
+	var resultsC <-chan time.Time
+	defer resultsT.Stop()
+	flush := func() error {
+		for hash, f := range pending {
+			select {
+			case <-f.Done():
+				res := &pb.ApplyResult{Hash: hash, Ok: f.Err() == nil}
+				if e := f.Err(); e != nil {
+					res.Error = e.Error()
+				}
+				delete(pending, hash)
+				if e := send(&pb.AgentMessage{Msg: &pb.AgentMessage_ApplyResult{ApplyResult: res}}); e != nil {
+					return e
+				}
+				if e := send(a.health(ctx)); e != nil {
+					return e
+				}
+			default:
+			}
+		}
+		if len(pending) == 0 {
+			resultsT.Stop()
+			resultsC = nil
+		}
+		return nil
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -201,8 +208,53 @@ func (a *Agent) session(ctx context.Context, p Panel) error {
 		case err := <-recvErr:
 			return err
 		case m := <-recv:
-			if err := a.handle(ctx, m, send); err != nil {
-				return err
+			switch msg := m.GetMsg().(type) {
+			case *pb.PanelMessage_ApplyConfig:
+				cfg := msg.ApplyConfig
+				if Hash(cfg.GetConfigJson()) != cfg.GetHash() {
+					if e := send(&pb.AgentMessage{Msg: &pb.AgentMessage_ApplyResult{ApplyResult: &pb.ApplyResult{Hash: cfg.GetHash(), Error: "config hash mismatch"}}}); e != nil {
+						return e
+					}
+				} else {
+					pending[cfg.GetHash()] = a.Engines.Submit("sing-box", cfg.GetConfigJson(), cfg.GetHash())
+					if resultsC == nil {
+						resultsT.Reset(50 * time.Millisecond)
+						resultsC = resultsT.C
+					}
+				}
+			case *pb.PanelMessage_NetworkConfig:
+				select {
+				case a.networkJobs <- msg.NetworkConfig:
+				default:
+					select {
+					case old := <-a.networkJobs:
+						data, _ := proto.Marshal(old)
+						if e := send(&pb.AgentMessage{Msg: &pb.AgentMessage_NetworkResult{NetworkResult: &pb.ApplyResult{Hash: Hash(data), Error: "network configuration superseded"}}}); e != nil {
+							return e
+						}
+					default:
+					}
+					select {
+					case a.networkJobs <- msg.NetworkConfig:
+					case <-ctx.Done():
+						return ctx.Err()
+					}
+				}
+			case *pb.PanelMessage_StatsAck:
+				a.acc.Ack(msg.StatsAck.GetSeq())
+			default:
+				return errors.New("unknown message from panel")
+			}
+			if e := flush(); e != nil {
+				return e
+			}
+		case <-resultsC:
+			if e := flush(); e != nil {
+				return e
+			}
+		case result := <-a.networkResults:
+			if e := send(&pb.AgentMessage{Msg: &pb.AgentMessage_NetworkResult{NetworkResult: result}}); e != nil {
+				return e
 			}
 		case <-statsT.C:
 			if s := a.acc.Next(); s != nil {
@@ -218,50 +270,53 @@ func (a *Agent) session(ctx context.Context, p Panel) error {
 	}
 }
 
-func (a *Agent) handle(ctx context.Context, m *pb.PanelMessage, send func(*pb.AgentMessage) error) error {
-	switch msg := m.GetMsg().(type) {
-	case *pb.PanelMessage_NetworkConfig:
-		data, _ := proto.Marshal(msg.NetworkConfig)
-		hash := Hash(data)
-		apply := a.NetworkApplier
-		if apply == nil {
-			apply = ApplyNetwork
+func (a *Agent) networkLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case cfg := <-a.networkJobs:
+			apply := a.NetworkApplier
+			if apply == nil {
+				apply = ApplyNetwork
+			}
+			work, cancel := context.WithTimeout(ctx, 10*time.Second)
+			err := apply(work, cfg)
+			cancel()
+			data, _ := proto.Marshal(cfg)
+			result := &pb.ApplyResult{Hash: Hash(data), Ok: err == nil}
+			if err != nil {
+				result.Error = "network configuration failed"
+				a.Log.Error("apply UDP aliases failed")
+			}
+			select {
+			case a.networkResults <- result:
+			case <-ctx.Done():
+				return
+			}
 		}
-		err := apply(ctx, msg.NetworkConfig)
-		result := &pb.ApplyResult{Hash: hash, Ok: err == nil}
-		if err != nil {
-			result.Error = err.Error()
-			a.Log.Error("apply UDP aliases", "err", err)
-		}
-		return send(&pb.AgentMessage{Msg: &pb.AgentMessage_NetworkResult{NetworkResult: result}})
-	case *pb.PanelMessage_ApplyConfig:
-		cfg := msg.ApplyConfig
-		res := &pb.ApplyResult{Hash: cfg.GetHash(), Ok: true}
-		var err error
-		if got := Hash(cfg.GetConfigJson()); got != cfg.GetHash() {
-			err = fmt.Errorf("hash mismatch: got %s, want %s", short(got), short(cfg.GetHash()))
-		} else {
-			err = a.Applier.Apply(ctx, cfg.GetConfigJson())
-		}
-		if err != nil {
-			res.Ok, res.Error = false, err.Error()
-			a.Log.Error("apply config", "hash", short(cfg.GetHash()), "err", err)
-		} else {
-			a.Log.Info("config applied", "hash", short(cfg.GetHash()))
-		}
-		if err := send(&pb.AgentMessage{Msg: &pb.AgentMessage_ApplyResult{ApplyResult: res}}); err != nil {
-			return err
-		}
-		return send(a.health(ctx))
-	case *pb.PanelMessage_StatsAck:
-		a.acc.Ack(msg.StatsAck.GetSeq())
-		return nil
-	default:
-		return errors.New("unknown message from panel")
 	}
 }
+func (a *Agent) engineStates() []*pb.EngineState {
+	out := make([]*pb.EngineState, 0)
+	for _, s := range a.Engines.States() {
+		out = append(out, &pb.EngineState{Id: s.ID, Version: s.Version, Active: s.Active, Phase: s.Phase, AppliedHash: s.AppliedHash, RejectedHash: s.RejectedHash, Error: s.Error})
+	}
+	return out
+}
 
-func (a *Agent) health(ctx context.Context) *pb.AgentMessage {
+func legacyEngineState(states []*pb.EngineState) *pb.EngineState {
+	for _, state := range states {
+		if state.GetId() == "sing-box" {
+			return state
+		}
+	}
+	return &pb.EngineState{}
+}
+
+func (a *Agent) health(_ context.Context) *pb.AgentMessage {
+	states := a.engineStates()
+	legacy := legacyEngineState(states)
 	mem := readKB(a.procDir+"/meminfo", "MemTotal", "MemAvailable")
 	self := readKB(a.procDir+"/self/status", "VmRSS")
 	return &pb.AgentMessage{Msg: &pb.AgentMessage_Health{Health: &pb.Health{
@@ -270,8 +325,9 @@ func (a *Agent) health(ctx context.Context) *pb.AgentMessage {
 		MemTotalBytes:     mem["MemTotal"],
 		MemAvailableBytes: mem["MemAvailable"],
 		AgentRssBytes:     self["VmRSS"],
-		SingboxActive:     a.Applier.Active(ctx),
-		ConfigHash:        a.Applier.CurrentHash(),
+		SingboxActive:     legacy.Active,
+		ConfigHash:        legacy.AppliedHash,
+		Engines:           states,
 	}}}
 }
 

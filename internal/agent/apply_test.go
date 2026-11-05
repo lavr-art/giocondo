@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"github.com/artemlavr/giocondo/internal/agent/engine"
+	"github.com/artemlavr/giocondo/internal/agent/singboxdriver"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +16,7 @@ import (
 //   - status succeeds while the config has no "CRASH" (sing-box "does not start" with such a config).
 type fakeEnv struct {
 	dir     string
-	applier *Applier
+	applier *legacyTestRuntime
 }
 
 func newFakeEnv(t *testing.T) *fakeEnv {
@@ -35,11 +37,8 @@ case "$1" in
 esac
 `)
 	restart := write("restart", `echo restart >> "`+filepath.Join(dir, "restarts.log")+`"`+"\n")
-	status := write("status", `! grep -q CRASH "`+cfg+`"`+"\n")
-	return &fakeEnv{dir: dir, applier: &Applier{
-		SingBoxBin: singbox, ConfigPath: cfg,
-		RestartCmd: []string{restart}, StatusCmd: []string{status},
-	}}
+	status := write("status", `test -f "`+cfg+`" && ! grep -q CRASH "`+cfg+`"`+"\n")
+	return &fakeEnv{dir: dir, applier: newLegacyTestRuntime(t, cfg, singbox, restart, status)}
 }
 
 func (e *fakeEnv) restarts(t *testing.T) int {
@@ -105,7 +104,7 @@ func TestApplyCheckFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := e.applier.Apply(ctx, []byte(`{"v":"BROKEN"}`))
-	if err == nil || !strings.Contains(err.Error(), "sing-box check") {
+	if err == nil || !strings.Contains(err.Error(), "validation") {
 		t.Fatalf("err = %v", err)
 	}
 	if e.config(t) != `{"v":1}` || e.restarts(t) != 1 {
@@ -137,7 +136,38 @@ func TestApplyRollback(t *testing.T) {
 func TestApplyFirstConfigCrashes(t *testing.T) {
 	e := newFakeEnv(t)
 	err := e.applier.Apply(context.Background(), []byte(`{"v":"CRASH"}`))
-	if err == nil || !strings.Contains(err.Error(), "no previous") {
+	if err == nil || !strings.Contains(err.Error(), "rolled back") {
 		t.Fatalf("err = %v", err)
 	}
+}
+
+// Keep the original behavior tests against the common runtime and real command adapter.
+type legacyTestRuntime struct {
+	*engine.Runtime
+	driver        *singboxdriver.Driver
+	BeforeRestart func(context.Context)
+}
+
+func newLegacyTestRuntime(t *testing.T, cfg, bin, restart, status string) *legacyTestRuntime {
+	t.Helper()
+	d := &singboxdriver.Driver{Binary: bin, RestartCmd: []string{restart}, StatusCmd: []string{status}, StopCmd: []string{"true"}}
+	r := &engine.Runtime{Driver: d, ConfigPath: cfg, StateDir: filepath.Join(filepath.Dir(cfg), "state")}
+	if e := r.Open(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	return &legacyTestRuntime{Runtime: r, driver: d}
+}
+func (a *legacyTestRuntime) CurrentHash() string { return a.Snapshot().AppliedHash }
+func (a *legacyTestRuntime) Apply(ctx context.Context, b []byte) error {
+	a.OnTraffic = func(map[string]engine.Traffic) {
+		if a.BeforeRestart != nil {
+			a.BeforeRestart(ctx)
+		}
+	}
+	return a.Runtime.Apply(ctx, b, engine.Hash(b))
+}
+func (a *legacyTestRuntime) Active(ctx context.Context) bool { b, _ := a.driver.Active(ctx); return b }
+func (a *legacyTestRuntime) Version(ctx context.Context) string {
+	v, _ := a.driver.Version(ctx)
+	return v
 }

@@ -30,8 +30,10 @@ message PanelMessage {
 message Hello {
   string agent_version = 1;
   string singbox_version = 2;
-  string config_hash = 3; // hex sha256 of the current config.json, empty means no config
+  string config_hash = 3; // hex sha256 of the confirmed sing-box config, empty means none confirmed
   string instance_id = 4; // random per agent start; together with Stats.seq it filters out repeats
+  repeated string capabilities = 5;
+  repeated EngineState engines = 6;
 }
 
 message ApplyConfig {
@@ -71,6 +73,7 @@ message Health {
   int64 agent_rss_bytes = 5;
   bool singbox_active = 6;
   string config_hash = 7;
+  repeated EngineState engines = 8;
 }
 
 // UDP aliases are already assigned to the OS; the agent only maintains its own
@@ -79,4 +82,15 @@ message NetworkConfig {
   string primary_ip = 1;
   repeated string aliases = 2;
   repeated uint32 udp_ports = 3;
+}
+
+// Hashes describe confirmed configuration state, never an in-progress file replacement.
+message EngineState {
+  string id = 1;
+  string version = 2;
+  bool active = 3;
+  string phase = 4; // ready | applying | blocked
+  string applied_hash = 5;
+  string rejected_hash = 6;
+  string error = 7;
 }

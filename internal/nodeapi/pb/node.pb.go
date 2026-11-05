@@ -256,8 +256,10 @@ type Hello struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	AgentVersion   string                 `protobuf:"bytes,1,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
 	SingboxVersion string                 `protobuf:"bytes,2,opt,name=singbox_version,json=singboxVersion,proto3" json:"singbox_version,omitempty"`
-	ConfigHash     string                 `protobuf:"bytes,3,opt,name=config_hash,json=configHash,proto3" json:"config_hash,omitempty"` // hex sha256 of the current config.json, empty means no config
+	ConfigHash     string                 `protobuf:"bytes,3,opt,name=config_hash,json=configHash,proto3" json:"config_hash,omitempty"` // hex sha256 of the confirmed sing-box config, empty means none confirmed
 	InstanceId     string                 `protobuf:"bytes,4,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"` // random per agent start; together with Stats.seq it filters out repeats
+	Capabilities   []string               `protobuf:"bytes,5,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Engines        []*EngineState         `protobuf:"bytes,6,rep,name=engines,proto3" json:"engines,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -318,6 +320,20 @@ func (x *Hello) GetInstanceId() string {
 		return x.InstanceId
 	}
 	return ""
+}
+
+func (x *Hello) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *Hello) GetEngines() []*EngineState {
+	if x != nil {
+		return x.Engines
+	}
+	return nil
 }
 
 type ApplyConfig struct {
@@ -600,6 +616,7 @@ type Health struct {
 	AgentRssBytes     int64                  `protobuf:"varint,5,opt,name=agent_rss_bytes,json=agentRssBytes,proto3" json:"agent_rss_bytes,omitempty"`
 	SingboxActive     bool                   `protobuf:"varint,6,opt,name=singbox_active,json=singboxActive,proto3" json:"singbox_active,omitempty"`
 	ConfigHash        string                 `protobuf:"bytes,7,opt,name=config_hash,json=configHash,proto3" json:"config_hash,omitempty"`
+	Engines           []*EngineState         `protobuf:"bytes,8,rep,name=engines,proto3" json:"engines,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -683,6 +700,13 @@ func (x *Health) GetConfigHash() string {
 	return ""
 }
 
+func (x *Health) GetEngines() []*EngineState {
+	if x != nil {
+		return x.Engines
+	}
+	return nil
+}
+
 // UDP aliases are already assigned to the OS; the agent only maintains its own
 // DNAT chain so wildcard UDP listeners reply using the contacted public address.
 type NetworkConfig struct {
@@ -745,6 +769,99 @@ func (x *NetworkConfig) GetUdpPorts() []uint32 {
 	return nil
 }
 
+// Hashes describe confirmed configuration state, never an in-progress file replacement.
+type EngineState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Active        bool                   `protobuf:"varint,3,opt,name=active,proto3" json:"active,omitempty"`
+	Phase         string                 `protobuf:"bytes,4,opt,name=phase,proto3" json:"phase,omitempty"` // ready | applying | blocked
+	AppliedHash   string                 `protobuf:"bytes,5,opt,name=applied_hash,json=appliedHash,proto3" json:"applied_hash,omitempty"`
+	RejectedHash  string                 `protobuf:"bytes,6,opt,name=rejected_hash,json=rejectedHash,proto3" json:"rejected_hash,omitempty"`
+	Error         string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EngineState) Reset() {
+	*x = EngineState{}
+	mi := &file_node_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EngineState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EngineState) ProtoMessage() {}
+
+func (x *EngineState) ProtoReflect() protoreflect.Message {
+	mi := &file_node_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EngineState.ProtoReflect.Descriptor instead.
+func (*EngineState) Descriptor() ([]byte, []int) {
+	return file_node_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *EngineState) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EngineState) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *EngineState) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *EngineState) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *EngineState) GetAppliedHash() string {
+	if x != nil {
+		return x.AppliedHash
+	}
+	return ""
+}
+
+func (x *EngineState) GetRejectedHash() string {
+	if x != nil {
+		return x.RejectedHash
+	}
+	return ""
+}
+
+func (x *EngineState) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_node_proto protoreflect.FileDescriptor
 
 const file_node_proto_rawDesc = "" +
@@ -762,14 +879,16 @@ const file_node_proto_rawDesc = "" +
 	"\fapply_config\x18\x01 \x01(\v2\x1d.giocondo.node.v1.ApplyConfigH\x00R\vapplyConfig\x129\n" +
 	"\tstats_ack\x18\x02 \x01(\v2\x1a.giocondo.node.v1.StatsAckH\x00R\bstatsAck\x12H\n" +
 	"\x0enetwork_config\x18\x03 \x01(\v2\x1f.giocondo.node.v1.NetworkConfigH\x00R\rnetworkConfigB\x05\n" +
-	"\x03msg\"\x97\x01\n" +
+	"\x03msg\"\xf4\x01\n" +
 	"\x05Hello\x12#\n" +
 	"\ragent_version\x18\x01 \x01(\tR\fagentVersion\x12'\n" +
 	"\x0fsingbox_version\x18\x02 \x01(\tR\x0esingboxVersion\x12\x1f\n" +
 	"\vconfig_hash\x18\x03 \x01(\tR\n" +
 	"configHash\x12\x1f\n" +
 	"\vinstance_id\x18\x04 \x01(\tR\n" +
-	"instanceId\"B\n" +
+	"instanceId\x12\"\n" +
+	"\fcapabilities\x18\x05 \x03(\tR\fcapabilities\x127\n" +
+	"\aengines\x18\x06 \x03(\v2\x1d.giocondo.node.v1.EngineStateR\aengines\"B\n" +
 	"\vApplyConfig\x12\x1f\n" +
 	"\vconfig_json\x18\x01 \x01(\fR\n" +
 	"configJson\x12\x12\n" +
@@ -786,7 +905,7 @@ const file_node_proto_rawDesc = "" +
 	"\x02up\x18\x02 \x01(\x03R\x02up\x12\x12\n" +
 	"\x04down\x18\x03 \x01(\x03R\x04down\"\x1c\n" +
 	"\bStatsAck\x12\x10\n" +
-	"\x03seq\x18\x01 \x01(\x04R\x03seq\"\x8d\x02\n" +
+	"\x03seq\x18\x01 \x01(\x04R\x03seq\"\xc6\x02\n" +
 	"\x06Health\x12%\n" +
 	"\x0euptime_seconds\x18\x01 \x01(\x03R\ruptimeSeconds\x12\x14\n" +
 	"\x05load1\x18\x02 \x01(\x01R\x05load1\x12&\n" +
@@ -795,12 +914,21 @@ const file_node_proto_rawDesc = "" +
 	"\x0fagent_rss_bytes\x18\x05 \x01(\x03R\ragentRssBytes\x12%\n" +
 	"\x0esingbox_active\x18\x06 \x01(\bR\rsingboxActive\x12\x1f\n" +
 	"\vconfig_hash\x18\a \x01(\tR\n" +
-	"configHash\"e\n" +
+	"configHash\x127\n" +
+	"\aengines\x18\b \x03(\v2\x1d.giocondo.node.v1.EngineStateR\aengines\"e\n" +
 	"\rNetworkConfig\x12\x1d\n" +
 	"\n" +
 	"primary_ip\x18\x01 \x01(\tR\tprimaryIp\x12\x18\n" +
 	"\aaliases\x18\x02 \x03(\tR\aaliases\x12\x1b\n" +
-	"\tudp_ports\x18\x03 \x03(\rR\budpPorts2Y\n" +
+	"\tudp_ports\x18\x03 \x03(\rR\budpPorts\"\xc3\x01\n" +
+	"\vEngineState\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x16\n" +
+	"\x06active\x18\x03 \x01(\bR\x06active\x12\x14\n" +
+	"\x05phase\x18\x04 \x01(\tR\x05phase\x12!\n" +
+	"\fapplied_hash\x18\x05 \x01(\tR\vappliedHash\x12#\n" +
+	"\rrejected_hash\x18\x06 \x01(\tR\frejectedHash\x12\x14\n" +
+	"\x05error\x18\a \x01(\tR\x05error2Y\n" +
 	"\vNodeService\x12J\n" +
 	"\x04Sync\x12\x1e.giocondo.node.v1.AgentMessage\x1a\x1e.giocondo.node.v1.PanelMessage(\x010\x01B3Z1github.com/artemlavr/giocondo/internal/nodeapi/pbb\x06proto3"
 
@@ -816,7 +944,7 @@ func file_node_proto_rawDescGZIP() []byte {
 	return file_node_proto_rawDescData
 }
 
-var file_node_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_node_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_node_proto_goTypes = []any{
 	(*AgentMessage)(nil),  // 0: giocondo.node.v1.AgentMessage
 	(*PanelMessage)(nil),  // 1: giocondo.node.v1.PanelMessage
@@ -828,6 +956,7 @@ var file_node_proto_goTypes = []any{
 	(*StatsAck)(nil),      // 7: giocondo.node.v1.StatsAck
 	(*Health)(nil),        // 8: giocondo.node.v1.Health
 	(*NetworkConfig)(nil), // 9: giocondo.node.v1.NetworkConfig
+	(*EngineState)(nil),   // 10: giocondo.node.v1.EngineState
 }
 var file_node_proto_depIdxs = []int32{
 	2,  // 0: giocondo.node.v1.AgentMessage.hello:type_name -> giocondo.node.v1.Hello
@@ -838,14 +967,16 @@ var file_node_proto_depIdxs = []int32{
 	3,  // 5: giocondo.node.v1.PanelMessage.apply_config:type_name -> giocondo.node.v1.ApplyConfig
 	7,  // 6: giocondo.node.v1.PanelMessage.stats_ack:type_name -> giocondo.node.v1.StatsAck
 	9,  // 7: giocondo.node.v1.PanelMessage.network_config:type_name -> giocondo.node.v1.NetworkConfig
-	6,  // 8: giocondo.node.v1.Stats.users:type_name -> giocondo.node.v1.UserTraffic
-	0,  // 9: giocondo.node.v1.NodeService.Sync:input_type -> giocondo.node.v1.AgentMessage
-	1,  // 10: giocondo.node.v1.NodeService.Sync:output_type -> giocondo.node.v1.PanelMessage
-	10, // [10:11] is the sub-list for method output_type
-	9,  // [9:10] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	10, // 8: giocondo.node.v1.Hello.engines:type_name -> giocondo.node.v1.EngineState
+	6,  // 9: giocondo.node.v1.Stats.users:type_name -> giocondo.node.v1.UserTraffic
+	10, // 10: giocondo.node.v1.Health.engines:type_name -> giocondo.node.v1.EngineState
+	0,  // 11: giocondo.node.v1.NodeService.Sync:input_type -> giocondo.node.v1.AgentMessage
+	1,  // 12: giocondo.node.v1.NodeService.Sync:output_type -> giocondo.node.v1.PanelMessage
+	12, // [12:13] is the sub-list for method output_type
+	11, // [11:12] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_node_proto_init() }
@@ -871,7 +1002,7 @@ func file_node_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_node_proto_rawDesc), len(file_node_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

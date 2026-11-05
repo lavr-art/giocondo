@@ -7,8 +7,8 @@
 A self-hosted control panel for personal [sing-box](https://sing-box.sagernet.org/) VPN nodes.
 
 The panel stores all state: users, terms, traffic limits, WireGuard keys, nodes and traffic history.
-A small agent on every node receives its config from the panel and runs sing-box. Users get one
-subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box and Mihomo/Clash clients.
+A small agent on every node receives its config from the panel and manages sing-box through an engine
+driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box and Mihomo/Clash clients.
 
 ## Features
 
@@ -17,9 +17,11 @@ subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box and Mih
 - **Secure node link**: the agent opens an outbound gRPC stream to the panel with mTLS and a private CA.
   No management port is opened on nodes, and sing-box keeps working with the last config if the panel goes away.
 - **Safe config rollout**: every config is validated with `sing-box check`, applied atomically and rolled back on failure.
-  Changes are throttled, so a burst of edits causes one restart.
+  An apply journal restores interrupted changes after agent restart. Changes are throttled, so a burst
+  of edits causes one restart.
 - **Traffic accounting**: per-user counters via the v2ray stats API (including WireGuard), with deduplication
-  so traffic is neither lost nor counted twice on reconnects and restarts.
+  so retransmitted batches are not counted twice within the same panel process. Unacknowledged deltas
+  are in memory and can be lost on agent termination.
 - **Users**: terms, traffic limits, limit resets that keep history, extensions, optional auto-deletion of expired users.
 - **Subscriptions**: base64 links, sing-box JSON (1.12+) or Mihomo YAML, picked by `User-Agent` or `?format=`,
   with `subscription-userinfo` and profile headers. Host overrides let you publish nodes under other addresses.
@@ -149,7 +151,9 @@ Main panel settings:
 | `PANEL_PROBE_URL`, `PANEL_PROBE_TOKEN` | | Optional external probe point |
 
 Agent settings: `AGENT_PANEL_ADDR` (`host:port`, comma-separated fallbacks), `AGENT_PANEL_SERVER_NAME`,
-`AGENT_LOG_LEVEL`, `AGENT_STATS_INTERVAL`.
+`AGENT_LOG_LEVEL`, `AGENT_STATS_INTERVAL`, `AGENT_STATE_DIR` (apply journal), and
+`AGENT_STOP_CMD` (cleanup of a failed first configuration). See
+[engine runtime and recovery](docs/implementation/engine-runtime.md) before changing service commands or downgrading.
 
 ## Subscriptions
 

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"github.com/artemlavr/giocondo/internal/agent/singboxdriver"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -23,7 +24,7 @@ func TestParseStats(t *testing.T) {
 		{Name: "garbage", Value: 1},
 		{Name: "user>>>dave>>>traffic>>>sideways", Value: 7},
 	}
-	got := ParseStats(in)
+	got := singboxdriver.ParseStats(in)
 	want := map[string]Traffic{"alice": {Up: 11, Down: 102}, "bob": {Down: 5}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v, want %v", got, want)

@@ -1,13 +1,14 @@
 package subscription
 
-// Split routing for clients that receive a ready config (sing-box JSON and
-// Mihomo YAML). The data is runetfreedom/russia-v2ray-rules-dat, updated every 6 hours.
+// Split routing for clients that receive a ready config (sing-box JSON and Mihomo YAML) or a routing
+// profile in a response header (Happ). The data is runetfreedom/russia-v2ray-rules-dat, updated every 6 hours.
 // Rule order matters:
 //  1. private networks go direct;
 //  2. what is blocked in Russia (ru-blocked) goes through the VPN, even if the domain is in the .ru zone;
 //  3. Russian resources (ru/su/xn--p1ai zones, category-ru, ru-available-only-inside, geoip ru) go direct;
 //  4. everything else goes through the VPN.
-// Hiddify and link-based clients configure routing themselves.
+// Happ places every domain rule before the IP rules, so a domain in a direct zone goes direct even if its IP is
+// in ru-blocked. Hiddify ignores routing from a subscription, and other link-based clients configure it themselves.
 
 const runetfreedomBase = "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release"
 

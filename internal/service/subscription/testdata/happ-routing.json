@@ -1,0 +1,32 @@
+{
+  "Name": "giocondo",
+  "GlobalProxy": "true",
+  "RouteOrder": "block-proxy-direct",
+  "DomainStrategy": "IPIfNonMatch",
+  "Geoipurl": "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat",
+  "Geositeurl": "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat",
+  "ProxySites": [
+    "geosite:ru-blocked"
+  ],
+  "ProxyIp": [
+    "geoip:ru-blocked"
+  ],
+  "DirectSites": [
+    "domain:ru",
+    "domain:su",
+    "domain:xn--p1ai",
+    "geosite:category-ru",
+    "geosite:ru-available-only-inside"
+  ],
+  "DirectIp": [
+    "10.0.0.0/8",
+    "100.64.0.0/10",
+    "127.0.0.0/8",
+    "169.254.0.0/16",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "fc00::/7",
+    "fe80::/10",
+    "geoip:ru"
+  ]
+}

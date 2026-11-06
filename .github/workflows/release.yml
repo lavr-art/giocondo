@@ -34,6 +34,12 @@ jobs:
           args: release --clean --skip=publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Collect the checksummed agent binaries
+        run: |
+          jq -r '.[] | select(.type == "Binary" and (.name | test("^giocondo-vpn-agent_.*_linux_"))) | [.path, .name] | @tsv' dist/artifacts.json |
+            while IFS=$'\t' read -r path name; do cp "$path" "dist/$name"; done
+          cd dist
+          sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: candidate

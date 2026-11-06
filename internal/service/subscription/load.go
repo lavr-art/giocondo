@@ -9,9 +9,10 @@ import (
 
 // Source supplies the stored state a subscription profile is built from.
 type Source struct {
-	Users UserSource
-	Nodes NodeSource
-	Hosts HostSource
+	Users    UserSource
+	Nodes    NodeSource
+	Hosts    HostSource
+	Settings SettingsSource
 }
 
 // UserSource reads the subscription owner and their usage.
@@ -31,11 +32,21 @@ type HostSource interface {
 	ListHosts(ctx context.Context) ([]panel.Host, error)
 }
 
+// SettingsSource reads the subscription settings.
+type SettingsSource interface {
+	SubscriptionSettings(ctx context.Context) (panel.SubscriptionSettings, error)
+}
+
 // LoadProfile loads a subscription profile.
 func LoadProfile(ctx context.Context, src Source, token string) (*Profile, error) {
 	u, err := src.Users.GetUserByToken(ctx, token)
 	if err != nil {
 		return nil, err
+	}
+
+	settings, err := src.Settings.SubscriptionSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("settings: %w", err)
 	}
 
 	usage, err := src.Users.UserUsage(ctx, u.ID)
@@ -58,7 +69,7 @@ func LoadProfile(ctx context.Context, src Source, token string) (*Profile, error
 		byInbound[h.InboundID] = append(byInbound[h.InboundID], h)
 	}
 
-	p := &Profile{User: *u, Usage: usage}
+	p := &Profile{User: *u, Usage: usage, Settings: settings}
 
 	for _, n := range nodes {
 		if n.Status == panel.NodeDisabled {

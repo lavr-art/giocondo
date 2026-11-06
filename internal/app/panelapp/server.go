@@ -40,8 +40,10 @@ func (a *App) configureServers(ctx context.Context) (err error) {
 	if a.subHandler == nil {
 		subMux := http.NewServeMux()
 		repos := a.repositories()
-		source := subscription.Source{Users: repos.Users, Nodes: repos.Nodes, Hosts: repos.Hosts}
-		(&subapi.Handler{Source: source, Title: a.cfg.SubTitle}).Register(subMux)
+		source := subscription.Source{
+			Users: repos.Users, Nodes: repos.Nodes, Hosts: repos.Hosts, Settings: a.SettingsService(),
+		}
+		(&subapi.Handler{Source: source}).Register(subMux)
 		subMux.HandleFunc("GET /health/challenge", probeapi.ChallengeHandler)
 		a.subHandler = subMux
 	}
@@ -151,6 +153,7 @@ func (a *App) adminHTTP() (http.Handler, error) {
 				Hosts:        a.HostService(),
 				Provisioning: a.ProvisioningService(),
 				Network:      a.NetworkService(),
+				Settings:     a.SettingsService(),
 			},
 			Password:      a.cfg.Password,
 			SessionSecret: a.cfg.SessionSecret,

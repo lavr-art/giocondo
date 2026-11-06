@@ -19,9 +19,10 @@ const (
 
 // Profile is everything needed for one user's subscription.
 type Profile struct {
-	User  panel.User
-	Usage panel.Usage
-	Nodes []NodeProfile
+	User     panel.User
+	Usage    panel.Usage
+	Nodes    []NodeProfile
+	Settings panel.SubscriptionSettings
 }
 
 // NodeProfile is a node and its protocols.

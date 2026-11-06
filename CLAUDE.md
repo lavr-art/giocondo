@@ -35,7 +35,7 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/transport/http/api/` | REST adapter with domain-specific service interfaces, route registry and token scopes |
 | `internal/transport/http/web/` | Web adapter with domain-specific service interfaces, sessions, templates, `static/app.js`, `static/style.css` |
 | `internal/model/panel/`, `internal/model/protocol/` | Entities, access policy, protocol parameter models, protocol keys and UUIDs |
-| `internal/repository/sqlite/` | Database open, migration runner and shared helpers (`DB.InTx`, `MapErr`, `Time`); a package per domain beneath it (`users`, `tokens`, `nodes`, `network`, `traffic`, `probes`, `hosts`): `repository.go` with the struct and constructor, one file per query |
+| `internal/repository/sqlite/` | Database open, migration runner and shared helpers (`DB.InTx`, `MapErr`, `Time`); a package per domain beneath it (`users`, `tokens`, `nodes`, `network`, `traffic`, `probes`, `hosts`, `settings`): `repository.go` with the struct and constructor, one file per query |
 | `migrations/` | SQL schema migrations `NNNN_*.sql`, embedded by `migrations.FS` |
 | `internal/service/nodeconfig/` | Desired config preparation, model conversion, WG and monitor credentials |
 | `internal/service/nodestate/` | Agent admission, reported node/installation state, desired config hashes, traffic records, reconciliation pass |
@@ -47,6 +47,7 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/transport/grpc/pb/`, `internal/transport/grpc/v2raystats/` | Generated protobuf/gRPC contracts |
 | `internal/service/singbox/` | Server config model and generator, TLS certificates, WG addresses |
 | `internal/service/subscription/`, `internal/transport/http/subapi/` | Subscriptions, links, sing-box JSON, Mihomo YAML, routing; the `GET /sub/<token>` handler |
+| `internal/service/settings/` | Panel settings changed at runtime: a JSON document per key in the `settings` table, read on every use |
 | `internal/service/provisioning/`, `internal/platform/installation/`, `internal/clients/ssh/` | Installation policy/jobs, embedded installer artifacts and SSH transport |
 | `internal/clients/cloudflare/`, `internal/platform/protocheck/`, `internal/service/nodeprobe/`, `internal/clients/probepoint/`, `internal/transport/http/probeapi/` | Cloudflare DNS; local protocol checks, node probes, the external probe point client and its server API |
 | `internal/worker/events/`, `internal/clients/webhook/` | In-memory event queue/retries and HTTP delivery |
@@ -194,6 +195,7 @@ the WG endpoint has no regular per-user counters.
 - Link parameters are an external contract: Hysteria2 `insecure=1`, password = UUID;
   WireGuard: private key in userinfo, `publickey`, `presharedkey`, `address`, `mtu`.
   Do not treat a parameter unknown to the client as working certificate protection.
+- Subscription settings live in `panel.SubscriptionSettings`, edited on the web `/settings` page. A saved value wins over the env default (`PANEL_SUB_TITLE`). A new setting is a field with a default and a check in the model, a form field and its use in the subscription with a test of the result; it needs no migration. A stored document that cannot be used is an error, not a fallback to defaults.
 
 ## Web, API and security
 

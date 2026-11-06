@@ -11,6 +11,7 @@ import (
 	networkrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/network"
 	noderepo "github.com/artemlavr/giocondo/internal/repository/sqlite/nodes"
 	proberepo "github.com/artemlavr/giocondo/internal/repository/sqlite/probes"
+	settingsrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/settings"
 	tokenrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/tokens"
 	trafficrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/traffic"
 	userrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/users"
@@ -22,6 +23,7 @@ import (
 	"github.com/artemlavr/giocondo/internal/service/nodes"
 	"github.com/artemlavr/giocondo/internal/service/nodestate"
 	"github.com/artemlavr/giocondo/internal/service/provisioning"
+	"github.com/artemlavr/giocondo/internal/service/settings"
 	"github.com/artemlavr/giocondo/internal/service/subscription"
 	"github.com/artemlavr/giocondo/internal/service/tokens"
 	"github.com/artemlavr/giocondo/internal/service/users"
@@ -50,13 +52,14 @@ type Dependencies struct {
 
 // Repositories are the panel storage ports grouped by domain; each joins the ports its consumers declare.
 type Repositories struct {
-	Users   UserRepository
-	Tokens  TokenRepository
-	Nodes   NodeRepository
-	Network NetworkRepository
-	Traffic TrafficRepository
-	Probes  ProbeRepository
-	Hosts   HostRepository
+	Users    UserRepository
+	Tokens   TokenRepository
+	Nodes    NodeRepository
+	Network  NetworkRepository
+	Traffic  TrafficRepository
+	Probes   ProbeRepository
+	Hosts    HostRepository
+	Settings SettingsRepository
 }
 
 // UserRepository stores users.
@@ -113,10 +116,15 @@ type HostRepository interface {
 	subscription.HostSource
 }
 
+// SettingsRepository stores panel settings.
+type SettingsRepository interface {
+	settings.Repository
+}
+
 // supplied reports whether any repository replaces the database one.
 func (r Repositories) supplied() bool {
 	return r.Users != nil || r.Tokens != nil || r.Nodes != nil || r.Network != nil || r.Traffic != nil ||
-		r.Probes != nil || r.Hosts != nil
+		r.Probes != nil || r.Hosts != nil || r.Settings != nil
 }
 
 // repositories returns the supplied repositories and builds the missing ones over the database: the
@@ -132,37 +140,48 @@ func (a *App) repositories() Repositories {
 		}
 
 		if db != nil {
-			if r.Users == nil {
-				r.Users = userrepo.New(db)
-			}
-
-			if r.Tokens == nil {
-				r.Tokens = tokenrepo.New(db)
-			}
-
-			if r.Nodes == nil {
-				r.Nodes = noderepo.New(db)
-			}
-
-			if r.Network == nil {
-				r.Network = networkrepo.New(db)
-			}
-
-			if r.Traffic == nil {
-				r.Traffic = trafficrepo.New(db)
-			}
-
-			if r.Probes == nil {
-				r.Probes = proberepo.New(db)
-			}
-
-			if r.Hosts == nil {
-				r.Hosts = hostrepo.New(db)
-			}
+			r = r.withMissing(db)
 		}
 
 		a.repos = r
 	})
 
 	return a.repos
+}
+
+// withMissing returns r with the repositories that were not supplied built over db.
+func (r Repositories) withMissing(db *sqlite.DB) Repositories {
+	if r.Users == nil {
+		r.Users = userrepo.New(db)
+	}
+
+	if r.Tokens == nil {
+		r.Tokens = tokenrepo.New(db)
+	}
+
+	if r.Nodes == nil {
+		r.Nodes = noderepo.New(db)
+	}
+
+	if r.Network == nil {
+		r.Network = networkrepo.New(db)
+	}
+
+	if r.Traffic == nil {
+		r.Traffic = trafficrepo.New(db)
+	}
+
+	if r.Probes == nil {
+		r.Probes = proberepo.New(db)
+	}
+
+	if r.Hosts == nil {
+		r.Hosts = hostrepo.New(db)
+	}
+
+	if r.Settings == nil {
+		r.Settings = settingsrepo.New(db)
+	}
+
+	return r
 }

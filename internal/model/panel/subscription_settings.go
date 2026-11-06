@@ -1,0 +1,60 @@
+package panel
+
+import (
+	"fmt"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+
+// Limits and defaults of the subscription settings.
+const (
+	DefaultSubscriptionTitle               = "giocondo-vpn"
+	DefaultSubscriptionUpdateIntervalHours = 12
+
+	maxSubscriptionTitleRunes          = 128
+	minSubscriptionUpdateIntervalHours = 1
+	maxSubscriptionUpdateIntervalHours = 168
+)
+
+// SubscriptionSettings configure what subscriptions tell clients. A new setting needs a field with a default
+// here, a check in Validate, a form field on the settings page and its use in the subscription.
+type SubscriptionSettings struct {
+	Title               string `json:"title"`                 // profile name in the client
+	UpdateIntervalHours int    `json:"update_interval_hours"` // how often a client refreshes the subscription
+}
+
+// DefaultSubscriptionSettings returns the settings of a panel that has none stored.
+func DefaultSubscriptionSettings() SubscriptionSettings {
+	return SubscriptionSettings{
+		Title:               DefaultSubscriptionTitle,
+		UpdateIntervalHours: DefaultSubscriptionUpdateIntervalHours,
+	}
+}
+
+// Validate reports the first invalid setting as ErrInvalid.
+func (s SubscriptionSettings) Validate() error {
+	if strings.TrimSpace(s.Title) == "" {
+		return fmt.Errorf("%w: title is required", ErrInvalid)
+	}
+
+	if utf8.RuneCountInString(s.Title) > maxSubscriptionTitleRunes {
+		return fmt.Errorf("%w: title must be at most %d characters", ErrInvalid, maxSubscriptionTitleRunes)
+	}
+
+	if strings.ContainsFunc(s.Title, unicode.IsControl) {
+		return fmt.Errorf("%w: title must not contain control characters", ErrInvalid)
+	}
+
+	if h := s.UpdateIntervalHours; h < minSubscriptionUpdateIntervalHours || h > maxSubscriptionUpdateIntervalHours {
+		return InvalidSubscriptionUpdateInterval()
+	}
+
+	return nil
+}
+
+// InvalidSubscriptionUpdateInterval is the error for an update interval that is out of range or not a number.
+func InvalidSubscriptionUpdateInterval() error {
+	return fmt.Errorf("%w: update interval must be a number of hours from %d to %d",
+		ErrInvalid, minSubscriptionUpdateIntervalHours, maxSubscriptionUpdateIntervalHours)
+}

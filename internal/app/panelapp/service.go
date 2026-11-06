@@ -1,6 +1,7 @@
 package panelapp
 
 import (
+	"github.com/artemlavr/giocondo/internal/model/panel"
 	"github.com/artemlavr/giocondo/internal/service/healthcheck"
 	"github.com/artemlavr/giocondo/internal/service/hosts"
 	"github.com/artemlavr/giocondo/internal/service/network"
@@ -9,6 +10,7 @@ import (
 	"github.com/artemlavr/giocondo/internal/service/nodes"
 	"github.com/artemlavr/giocondo/internal/service/nodestate"
 	"github.com/artemlavr/giocondo/internal/service/provisioning"
+	"github.com/artemlavr/giocondo/internal/service/settings"
 	"github.com/artemlavr/giocondo/internal/service/singbox"
 	"github.com/artemlavr/giocondo/internal/service/tokens"
 	"github.com/artemlavr/giocondo/internal/service/users"
@@ -54,6 +56,20 @@ func (a *App) HostService() *hosts.Service {
 	})
 
 	return a.hosts
+}
+
+// SettingsService returns the settings service. PANEL_SUB_TITLE is only a default: a title saved in the panel wins.
+func (a *App) SettingsService() *settings.Service {
+	a.serviceOnce.settings.Do(func() {
+		defaults := panel.DefaultSubscriptionSettings()
+		if a.cfg.SubTitle != "" {
+			defaults.Title = a.cfg.SubTitle
+		}
+
+		a.settings = settings.New(a.hooksForServices, a.repositories().Settings, defaults)
+	})
+
+	return a.settings
 }
 
 // NodeQueries returns node queries.

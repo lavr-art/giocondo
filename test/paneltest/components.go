@@ -9,6 +9,7 @@ import (
 	"github.com/artemlavr/giocondo/internal/service/nodeconfig"
 	"github.com/artemlavr/giocondo/internal/service/nodes"
 	"github.com/artemlavr/giocondo/internal/service/provisioning"
+	"github.com/artemlavr/giocondo/internal/service/settings"
 	"github.com/artemlavr/giocondo/internal/service/tokens"
 	"github.com/artemlavr/giocondo/internal/service/users"
 	"github.com/artemlavr/giocondo/internal/service/watcher"
@@ -31,6 +32,7 @@ type Components struct {
 	Queries      *nodes.Reader
 	Nodes        *nodes.Service
 	Hosts        *hosts.Service
+	Settings     *settings.Service
 	Credentials  *nodeconfig.Coordinator
 	Provisioning *provisioning.Service
 	Network      *network.Service
@@ -42,7 +44,7 @@ type Components struct {
 func New(cfg Config, d Dependencies) *Components {
 	a := panelapp.New(cfg, d)
 
-	return &Components{App: a, Users: a.UserService(), Tokens: a.TokenService(), Queries: a.NodeQueries(), Nodes: a.NodeService(), Hosts: a.HostService(), Credentials: a.CredentialCoordinator(), Provisioning: a.ProvisioningService(), Network: a.NetworkService(), Health: a.HealthcheckService(), Watcher: a.WatcherService()}
+	return &Components{App: a, Users: a.UserService(), Tokens: a.TokenService(), Queries: a.NodeQueries(), Nodes: a.NodeService(), Hosts: a.HostService(), Settings: a.SettingsService(), Credentials: a.CredentialCoordinator(), Provisioning: a.ProvisioningService(), Network: a.NetworkService(), Health: a.HealthcheckService(), Watcher: a.WatcherService()}
 }
 
 // Close releases resources.

@@ -16,18 +16,10 @@ import (
 	"github.com/artemlavr/giocondo/pkg/logger"
 )
 
-// DefaultTitle is the profile name in the client when none is configured.
-const DefaultTitle = "giocondo-vpn"
-
-// DefaultUpdateIntervalHours is how often a client should refresh the subscription.
-const DefaultUpdateIntervalHours = 12
-
 // Handler serves the subscription at GET /sub/{token}.
 type Handler struct {
-	Source         subscription.Source
-	Title          string           // profile name in the client; empty means DefaultTitle
-	UpdateInterval int              // hours; 0 means DefaultUpdateIntervalHours
-	Now            func() time.Time // for tests; nil means time.Now
+	Source subscription.Source
+	Now    func() time.Time // for tests; nil means time.Now
 }
 
 // Register attaches the handler to mux.
@@ -99,22 +91,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title := h.Title
-	if title == "" {
-		title = DefaultTitle
-	}
-
-	interval := h.UpdateInterval
-	if interval <= 0 {
-		interval = DefaultUpdateIntervalHours
-	}
+	title := p.Settings.Title
 
 	hdr := w.Header()
 	hdr.Set("Content-Type", contentType)
 	hdr.Set("Cache-Control", "no-store")
 	hdr.Set("Subscription-Userinfo", p.UserInfo())
 	hdr.Set("Profile-Title", "base64:"+base64.StdEncoding.EncodeToString([]byte(title)))
-	hdr.Set("Profile-Update-Interval", strconv.Itoa(interval))
+	hdr.Set("Profile-Update-Interval", strconv.Itoa(p.Settings.UpdateIntervalHours))
 	hdr.Set("Content-Disposition", contentDisposition(title, ext))
 
 	if routing != "" {

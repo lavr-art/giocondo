@@ -153,6 +153,7 @@ Main panel settings:
 | `PANEL_ADMIN_PASSWORD` | random | Admin UI password |
 | `PANEL_LISTEN` | `127.0.0.1:8080` | Admin UI and API listener |
 | `PANEL_SUB_LISTEN` | `127.0.0.1:8081` | Subscription listener |
+| `PANEL_SUB_TITLE` | `giocondo-vpn` | Default profile name in clients; the name saved on the Settings page takes precedence |
 | `PANEL_GRPC_LISTEN` | `:9443` | gRPC listener for agents |
 | `PANEL_WEBHOOK_URL`, `PANEL_WEBHOOK_SECRET` | | Event webhooks |
 | `PANEL_AUTODELETE_EXPIRED_DAYS` | `0` | Delete users expired more than N days ago |

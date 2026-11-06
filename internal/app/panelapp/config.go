@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/artemlavr/giocondo/internal/service/healthcheck"
-	"github.com/artemlavr/giocondo/internal/transport/http/subapi"
 )
 
 // Defaults of the listen addresses. Operator commands use the same defaults for these settings.
@@ -86,7 +85,7 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		AdminPath:        getenv("PANEL_ADMIN_PATH"),
 		Password:         getenv("PANEL_ADMIN_PASSWORD"),
 		SessionSecret:    getenv("PANEL_SESSION_SECRET"),
-		SubTitle:         or("PANEL_SUB_TITLE", subapi.DefaultTitle),
+		SubTitle:         getenv("PANEL_SUB_TITLE"),
 		SingboxBinary:    or("PANEL_SINGBOX_BIN", "/usr/lib/giocondo-vpn/sing-box"),
 		ChallengeURL:     or("PANEL_PROBE_CHALLENGE_URL", subURL+"/health/challenge"),
 		ProbeCA:          getenv("PANEL_PROBE_CA"),

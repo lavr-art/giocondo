@@ -26,6 +26,12 @@ type Provisioning interface {
 	ProvisionSSH(ctx context.Context, id int64, in panel.SSHInput) (panel.JobView, error)
 }
 
+// Settings provides panel settings.
+type Settings interface {
+	SubscriptionSettings(ctx context.Context) (panel.SubscriptionSettings, error)
+	UpdateSubscriptionSettings(ctx context.Context, in panel.SubscriptionSettings) error
+}
+
 // Hosts provides host operations.
 type Hosts interface {
 	CreateHost(ctx context.Context, nodeID int64, in panel.HostInput) (panel.HostView, error)
@@ -74,4 +80,5 @@ type Dependencies struct {
 	Tokens       Tokens
 	Users        Users
 	Queries      Queries
+	Settings     Settings
 }

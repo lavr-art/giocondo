@@ -27,6 +27,8 @@ driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Ka
   with `subscription-userinfo` and profile headers. Host overrides let you publish nodes under other addresses.
 - **Routing**: private networks and Russian zones/categories go direct, blocked resources and everything else go
   through the VPN, based on [runetfreedom/russia-v2ray-rules-dat](https://github.com/runetfreedom/russia-v2ray-rules-dat).
+  sing-box and Mihomo clients get it in the config, Happ in the `routing` response header. Hiddify and other link-based
+  clients configure routing themselves, and native WireGuard configs send all traffic through the VPN.
 - **Web UI and REST API**: `html/template` + htmx with a strict CSP, a secret admin path, and an OpenAPI-described
   API with scoped tokens.
 - **Node provisioning**: install a node over SSH or with a cloud-init snippet; optional Cloudflare DNS records for nodes.

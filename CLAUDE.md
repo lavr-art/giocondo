@@ -186,6 +186,9 @@ the WG endpoint has no regular per-user counters.
 - Routing: private networks direct; `ru-blocked` through the VPN before the RU rules;
   the ru/su/xn--p1ai zones and the corresponding RU categories direct; everything else through the VPN.
   The rule-set source is runetfreedom/russia-v2ray-rules-dat, release branch.
+- Happ (`User-Agent` prefix `Happ/`) gets these rules as a profile in the `routing` response header, only with the links
+  format: v2RayTun reads a same-named header in another format. Happ puts domain rules before IP rules, so a direct-zone
+  domain with a `ru-blocked` IP goes direct. Hiddify ignores routing from a subscription; native WireGuard has no rules.
 - Host overrides replace the node host in the subscription and respect `sort`.
   The SNI changes for Hysteria2; Reality keeps a valid `server_name`, WG has no SNI.
 - Link parameters are an external contract: Hysteria2 `insecure=1`, password = UUID;

@@ -87,6 +87,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		contentType, ext = "text/plain; charset=utf-8", "txt"
 	}
 
+	var routing string
+	if err == nil && format == subscription.FormatLinks && subscription.IsHapp(r.UserAgent()) {
+		routing, err = subscription.HappRoutingLink()
+	}
+
 	if err != nil {
 		logger.FromCtx(r.Context()).Error("subscription: render", "user_id", p.User.ID, "format", format, "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -111,6 +116,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hdr.Set("Profile-Title", "base64:"+base64.StdEncoding.EncodeToString([]byte(title)))
 	hdr.Set("Profile-Update-Interval", strconv.Itoa(interval))
 	hdr.Set("Content-Disposition", contentDisposition(title, ext))
+
+	if routing != "" {
+		hdr.Set("Routing", routing)
+	}
 
 	//nolint:gosec // body is a generated subscription document, not HTML; the content type is set above.
 	_, _ = w.Write(body)

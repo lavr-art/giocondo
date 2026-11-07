@@ -3,9 +3,11 @@ package subscription
 import (
 	"bytes"
 	"net/netip"
+	"slices"
 
 	yaml "gopkg.in/yaml.v3"
 
+	"github.com/artemlavr/giocondo/internal/model/panel"
 	"github.com/artemlavr/giocondo/internal/model/protocol"
 )
 
@@ -16,20 +18,32 @@ var privateCIDRs = []string{
 }
 
 type clashConfig struct {
-	MixedPort         int               `yaml:"mixed-port"`
-	AllowLAN          bool              `yaml:"allow-lan"`
-	Mode              string            `yaml:"mode"`
-	LogLevel          string            `yaml:"log-level"`
-	IPv6              bool              `yaml:"ipv6"`
-	GeodataMode       bool              `yaml:"geodata-mode"`
-	GeodataLoader     string            `yaml:"geodata-loader"`
-	GeoAutoUpdate     bool              `yaml:"geo-auto-update"`
-	GeoUpdateInterval int               `yaml:"geo-update-interval"` // hours
-	GeoxURL           map[string]string `yaml:"geox-url"`
-	Proxies           []clashProxy      `yaml:"proxies"`
-	ProxyGroups       []clashGroup      `yaml:"proxy-groups"`
-	Rules             []string          `yaml:"rules"`
+	MixedPort     int            `yaml:"mixed-port"`
+	AllowLAN      bool           `yaml:"allow-lan"`
+	Mode          string         `yaml:"mode"`
+	LogLevel      string         `yaml:"log-level"`
+	IPv6          bool           `yaml:"ipv6"`
+	Proxies       []clashProxy   `yaml:"proxies"`
+	ProxyGroups   []clashGroup   `yaml:"proxy-groups"`
+	RuleProviders map[string]any `yaml:"rule-providers,omitempty"`
+	Rules         []string       `yaml:"rules"`
+	DNS           map[string]any `yaml:"dns,omitempty"`
+	Sniffer       map[string]any `yaml:"sniffer,omitempty"`
 }
+
+// clashRuleProvider is a list the client downloads through the VPN, so it does not depend on the geodata files of
+// the client or on GitHub being reachable directly. On a failed download the rules of the list do not match,
+// and the client retries.
+type clashRuleProvider struct {
+	Type     string `yaml:"type"`
+	Behavior string `yaml:"behavior"`
+	Format   string `yaml:"format"`
+	URL      string `yaml:"url"`
+	Interval int    `yaml:"interval"` // seconds
+	Proxy    string `yaml:"proxy"`
+}
+
+const ruleProviderIntervalSeconds = 86400
 
 // clashProxy is the union of Mihomo fields for vless, hysteria2 and wireguard; empty fields are omitted.
 type clashProxy struct {
@@ -86,9 +100,14 @@ func ClashYAML(p Profile) ([]byte, error) {
 
 	cfg := clashConfig{
 		MixedPort: 7890, Mode: "rule", LogLevel: "warning", IPv6: true,
-		// runetfreedom categories (routing.go) in geodata format.
-		GeodataMode: true, GeodataLoader: "memconservative", GeoAutoUpdate: true, GeoUpdateInterval: 72,
-		GeoxURL: map[string]string{"geoip": geoipDatURL, "geosite": geositeDatURL},
+		RuleProviders: map[string]any{},
+	}
+
+	for _, rs := range allRuleSets {
+		cfg.RuleProviders[rs.Tag] = clashRuleProvider{
+			Type: "http", Behavior: rs.Behavior, Format: "mrs", URL: rs.MihomoURL(),
+			Interval: ruleProviderIntervalSeconds, Proxy: tagProxy,
+		}
 	}
 
 	names := make([]string, 0, len(srvs))
@@ -143,13 +162,22 @@ func ClashYAML(p Profile) ([]byte, error) {
 		cfg.Rules = append(cfg.Rules, kind+","+c+",DIRECT,no-resolve")
 	}
 	// Same order as in routing.go: blocked takes precedence over "Russian".
-	cfg.Rules = append(cfg.Rules, "GEOSITE,ru-blocked,"+tagProxy, "GEOIP,ru-blocked,"+tagProxy+",no-resolve")
+	cfg.Rules = append(cfg.Rules, ruleSetRule(rsSiteBlocked, tagProxy), ruleSetRule(rsIPBlocked, tagProxy)+",no-resolve")
 	for _, d := range directSuffixes {
 		cfg.Rules = append(cfg.Rules, "DOMAIN-SUFFIX,"+d+",DIRECT")
 	}
 
-	cfg.Rules = append(cfg.Rules, "GEOSITE,category-ru,DIRECT", "GEOSITE,ru-available-only-inside,DIRECT",
-		"GEOIP,ru,DIRECT", "MATCH,"+tagProxy)
+	cfg.Rules = append(cfg.Rules, ruleSetRule(rsSiteRU, "DIRECT"), ruleSetRule(rsSiteInside, "DIRECT"),
+		ruleSetRule(rsIPRU, "DIRECT"), "MATCH,"+tagProxy)
+
+	if p.Settings.ClashRoutingEnabled {
+		routing, err := panel.ParseClashRouting(p.Settings.ClashRoutingYAML)
+		if err != nil {
+			return nil, err
+		}
+
+		applyClashRouting(&cfg, routing)
+	}
 
 	var buf bytes.Buffer
 
@@ -161,4 +189,32 @@ func ClashYAML(p Profile) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func ruleSetRule(rs ruleSet, target string) string {
+	return "RULE-SET," + rs.Tag + "," + target
+}
+
+// applyClashRouting adds the routing of the administrator: rules with MATCH replace the built-in ones, others go
+// before them. Built-in lists no rule uses are dropped, so clients do not download them.
+func applyClashRouting(cfg *clashConfig, r panel.ClashRouting) {
+	if r.HasMatch() {
+		cfg.Rules = r.Rules
+	} else {
+		cfg.Rules = append(slices.Clone(r.Rules), cfg.Rules...)
+	}
+
+	used := panel.ClashRuleProviderNames(cfg.Rules)
+
+	for _, rs := range allRuleSets {
+		if !slices.Contains(used, rs.Tag) {
+			delete(cfg.RuleProviders, rs.Tag)
+		}
+	}
+
+	for name, provider := range r.RuleProviders {
+		cfg.RuleProviders[name] = provider
+	}
+
+	cfg.DNS, cfg.Sniffer = r.DNS, r.Sniffer
 }

@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"flag"
+	"maps"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -223,9 +226,231 @@ func TestClashYAMLGolden(t *testing.T) {
 	if n := len(parsed["proxies"].([]any)); n != 5 {
 		t.Errorf("%d proxies, want 5", n)
 	}
-	// mihomo -t downloads GeoIP on first run, so only with an explicit MIHOMO_CHECK=1.
+	// Only with an explicit MIHOMO_CHECK=1, because it needs mihomo in PATH.
 	if os.Getenv("MIHOMO_CHECK") == "1" {
 		runTool(t, "mihomo", "-t", "-d", t.TempDir(), "-f", path)
+	}
+}
+
+// The routing must not depend on the geodata files of the client: FlClash and Clash Verge Rev replace them with
+// files that lack ru-blocked, and a profile with a GEOSITE rule on it does not start.
+func TestClashYAMLRouting(t *testing.T) {
+	got, err := ClashYAML(fixture(t, "alice"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var parsed struct {
+		Rules         []string                  `yaml:"rules"`
+		RuleProviders map[string]map[string]any `yaml:"rule-providers"`
+	}
+	if err := yaml.Unmarshal(got, &parsed); err != nil {
+		t.Fatal(err)
+	}
+
+	wantRules := []string{
+		"IP-CIDR,10.0.0.0/8,DIRECT,no-resolve",
+		"IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
+		"IP-CIDR,127.0.0.0/8,DIRECT,no-resolve",
+		"IP-CIDR,169.254.0.0/16,DIRECT,no-resolve",
+		"IP-CIDR,172.16.0.0/12,DIRECT,no-resolve",
+		"IP-CIDR,192.168.0.0/16,DIRECT,no-resolve",
+		"IP-CIDR6,fc00::/7,DIRECT,no-resolve",
+		"IP-CIDR6,fe80::/10,DIRECT,no-resolve",
+		"RULE-SET,geosite-ru-blocked,proxy",
+		"RULE-SET,geoip-ru-blocked,proxy,no-resolve",
+		"DOMAIN-SUFFIX,ru,DIRECT",
+		"DOMAIN-SUFFIX,su,DIRECT",
+		"DOMAIN-SUFFIX,xn--p1ai,DIRECT",
+		"RULE-SET,geosite-category-ru,DIRECT",
+		"RULE-SET,geosite-ru-available-only-inside,DIRECT",
+		"RULE-SET,geoip-ru,DIRECT",
+		"MATCH,proxy",
+	}
+	if !slices.Equal(parsed.Rules, wantRules) {
+		t.Errorf("rules:\n%s\nwant:\n%s", strings.Join(parsed.Rules, "\n"), strings.Join(wantRules, "\n"))
+	}
+
+	const base = "https://github.com/lavr-art/giocondo/releases/download/rules/"
+
+	wantBehavior := map[string]string{
+		"geosite-ru-blocked":               "domain",
+		"geoip-ru-blocked":                 "ipcidr",
+		"geosite-category-ru":              "domain",
+		"geosite-ru-available-only-inside": "domain",
+		"geoip-ru":                         "ipcidr",
+	}
+	if len(parsed.RuleProviders) != len(wantBehavior) {
+		t.Errorf("%d rule providers, want %d", len(parsed.RuleProviders), len(wantBehavior))
+	}
+
+	for name, behavior := range wantBehavior {
+		want := map[string]any{
+			"type": "http", "behavior": behavior, "format": "mrs", "url": base + name + ".mrs", "interval": 86400, "proxy": "proxy",
+		}
+		if got := parsed.RuleProviders[name]; !maps.Equal(got, want) {
+			t.Errorf("provider %s = %v, want %v", name, got, want)
+		}
+	}
+
+	for _, banned := range []string{"GEOSITE", "GEOIP", "geox-url", "geodata-mode", "geodata-loader", "geo-auto-update"} {
+		if strings.Contains(string(got), banned) {
+			t.Errorf("the profile depends on client geodata: it contains %q", banned)
+		}
+	}
+}
+
+func TestClashYAMLCustomRouting(t *testing.T) {
+	const custom = "rule-providers:\n  mine: {type: http, behavior: domain, format: text, url: 'https://example.com/l.txt', proxy: proxy}\n"
+
+	builtinRules := len(clashYAMLParts(t, fixture(t, "alice")).Rules)
+
+	tests := []struct {
+		name          string
+		enabled       bool
+		yaml          string
+		wantFirstRule string
+		wantRules     int
+		wantProviders []string
+	}{
+		{
+			name: "a saved draft does not apply", enabled: false, yaml: "rules:\n  - MATCH,DIRECT\n",
+			wantFirstRule: "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve", wantRules: builtinRules,
+			wantProviders: []string{"geoip-ru", "geoip-ru-blocked", "geosite-category-ru", "geosite-ru-available-only-inside", "geosite-ru-blocked"},
+		},
+		{
+			name: "rules without MATCH go before the built-in ones", enabled: true,
+			yaml:          custom + "rules:\n  - RULE-SET,mine,DIRECT\n",
+			wantFirstRule: "RULE-SET,mine,DIRECT", wantRules: builtinRules + 1,
+			wantProviders: []string{"geoip-ru", "geoip-ru-blocked", "geosite-category-ru", "geosite-ru-available-only-inside", "geosite-ru-blocked", "mine"},
+		},
+		{
+			name: "rules with MATCH replace the built-in ones and drop their lists", enabled: true,
+			yaml:          custom + "rules:\n  - RULE-SET,mine,DIRECT\n  - MATCH,proxy\n",
+			wantFirstRule: "RULE-SET,mine,DIRECT", wantRules: 2,
+			wantProviders: []string{"mine"},
+		},
+		{
+			name: "a replacement keeps the built-in list it uses", enabled: true,
+			yaml:          "rules:\n  - RULE-SET,geoip-ru,DIRECT\n  - MATCH,proxy\n",
+			wantFirstRule: "RULE-SET,geoip-ru,DIRECT", wantRules: 2,
+			wantProviders: []string{"geoip-ru"},
+		},
+		{
+			name: "dns alone keeps the built-in rules", enabled: true, yaml: "dns:\n  enable: true\n",
+			wantFirstRule: "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve", wantRules: builtinRules,
+			wantProviders: []string{"geoip-ru", "geoip-ru-blocked", "geosite-category-ru", "geosite-ru-available-only-inside", "geosite-ru-blocked"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := fixture(t, "alice")
+			p.Settings.ClashRoutingEnabled = tt.enabled
+			p.Settings.ClashRoutingYAML = tt.yaml
+
+			parts := clashYAMLParts(t, p)
+			if parts.Rules[0] != tt.wantFirstRule || len(parts.Rules) != tt.wantRules {
+				t.Errorf("first rule %q of %d, want %q of %d", parts.Rules[0], len(parts.Rules), tt.wantFirstRule, tt.wantRules)
+			}
+
+			if got := slices.Sorted(maps.Keys(parts.RuleProviders)); !slices.Equal(got, tt.wantProviders) {
+				t.Errorf("providers %v, want %v", got, tt.wantProviders)
+			}
+
+			if len(parts.Proxies) != 5 {
+				t.Errorf("%d proxies, custom routing must not touch them", len(parts.Proxies))
+			}
+
+			if os.Getenv("MIHOMO_CHECK") == "1" {
+				body, err := ClashYAML(p)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				path := filepath.Join(t.TempDir(), "custom.yaml")
+				if err := os.WriteFile(path, body, 0o600); err != nil {
+					t.Fatal(err)
+				}
+
+				runTool(t, "mihomo", "-t", "-d", t.TempDir(), "-f", path)
+			}
+		})
+	}
+}
+
+func TestClashYAMLCustomDNSAndSniffer(t *testing.T) {
+	p := fixture(t, "alice")
+	p.Settings.ClashRoutingEnabled = true
+	p.Settings.ClashRoutingYAML = "dns:\n  enable: true\n  ipv6: false\nsniffer:\n  enable: true\n"
+
+	parts := clashYAMLParts(t, p)
+	if parts.DNS["enable"] != true || parts.DNS["ipv6"] != false || parts.Sniffer["enable"] != true {
+		t.Fatalf("dns = %v, sniffer = %v", parts.DNS, parts.Sniffer)
+	}
+}
+
+// Without custom routing the profile leaves DNS and sniffing to the client, as before.
+func TestClashYAMLHasNoDNSByDefault(t *testing.T) {
+	parts := clashYAMLParts(t, fixture(t, "alice"))
+	if parts.DNS != nil || parts.Sniffer != nil {
+		t.Fatalf("dns = %v, sniffer = %v", parts.DNS, parts.Sniffer)
+	}
+}
+
+func TestClashYAMLRejectsBrokenCustomRouting(t *testing.T) {
+	p := fixture(t, "alice")
+	p.Settings.ClashRoutingEnabled = true
+	p.Settings.ClashRoutingYAML = "proxies: []\n"
+
+	if _, err := ClashYAML(p); !errors.Is(err, panel.ErrInvalid) {
+		t.Fatalf("ClashYAML() = %v, want ErrInvalid", err)
+	}
+}
+
+// The model checks references to built-in lists without importing this package.
+func TestBuiltinRuleSetsMatchTheModel(t *testing.T) {
+	if got := tags(allRuleSets...); !slices.Equal(got, panel.ClashBuiltinRuleSets) {
+		t.Fatalf("rule sets %v, model %v", got, panel.ClashBuiltinRuleSets)
+	}
+}
+
+type clashParts struct {
+	Proxies       []map[string]any          `yaml:"proxies"`
+	Rules         []string                  `yaml:"rules"`
+	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
+	DNS           map[string]any            `yaml:"dns"`
+	Sniffer       map[string]any            `yaml:"sniffer"`
+}
+
+func clashYAMLParts(t *testing.T, p Profile) clashParts {
+	t.Helper()
+
+	body, err := ClashYAML(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var parts clashParts
+	if err := yaml.Unmarshal(body, &parts); err != nil {
+		t.Fatal(err)
+	}
+
+	return parts
+}
+
+// The lists are published by deploy/rules/build.sh, so a set added here without it would be a 404 for clients.
+func TestRuleSetsArePublished(t *testing.T) {
+	script, err := os.ReadFile("../../../deploy/rules/build.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rs := range allRuleSets {
+		want := strings.TrimSuffix(rs.Path, ".srs")
+		if !strings.Contains(string(script), rs.Behavior+" "+want) {
+			t.Errorf("deploy/rules/build.sh does not publish %s %s", rs.Behavior, want)
+		}
 	}
 }
 

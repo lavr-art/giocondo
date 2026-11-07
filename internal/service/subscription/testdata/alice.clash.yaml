@@ -3,13 +3,6 @@ allow-lan: false
 mode: rule
 log-level: warning
 ipv6: true
-geodata-mode: true
-geodata-loader: memconservative
-geo-auto-update: true
-geo-update-interval: 72
-geox-url:
-  geoip: https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat
-  geosite: https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat
 proxies:
   - name: n1 · Reality
     type: vless
@@ -94,6 +87,42 @@ proxy-groups:
       - n2 · Hysteria2
     url: https://www.gstatic.com/generate_204
     interval: 300
+rule-providers:
+  geoip-ru:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://github.com/lavr-art/giocondo/releases/download/rules/geoip-ru.mrs
+    interval: 86400
+    proxy: proxy
+  geoip-ru-blocked:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://github.com/lavr-art/giocondo/releases/download/rules/geoip-ru-blocked.mrs
+    interval: 86400
+    proxy: proxy
+  geosite-category-ru:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://github.com/lavr-art/giocondo/releases/download/rules/geosite-category-ru.mrs
+    interval: 86400
+    proxy: proxy
+  geosite-ru-available-only-inside:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://github.com/lavr-art/giocondo/releases/download/rules/geosite-ru-available-only-inside.mrs
+    interval: 86400
+    proxy: proxy
+  geosite-ru-blocked:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://github.com/lavr-art/giocondo/releases/download/rules/geosite-ru-blocked.mrs
+    interval: 86400
+    proxy: proxy
 rules:
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
@@ -103,12 +132,12 @@ rules:
   - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
   - IP-CIDR6,fc00::/7,DIRECT,no-resolve
   - IP-CIDR6,fe80::/10,DIRECT,no-resolve
-  - GEOSITE,ru-blocked,proxy
-  - GEOIP,ru-blocked,proxy,no-resolve
+  - RULE-SET,geosite-ru-blocked,proxy
+  - RULE-SET,geoip-ru-blocked,proxy,no-resolve
   - DOMAIN-SUFFIX,ru,DIRECT
   - DOMAIN-SUFFIX,su,DIRECT
   - DOMAIN-SUFFIX,xn--p1ai,DIRECT
-  - GEOSITE,category-ru,DIRECT
-  - GEOSITE,ru-available-only-inside,DIRECT
-  - GEOIP,ru,DIRECT
+  - RULE-SET,geosite-category-ru,DIRECT
+  - RULE-SET,geosite-ru-available-only-inside,DIRECT
+  - RULE-SET,geoip-ru,DIRECT
   - MATCH,proxy

@@ -133,3 +133,16 @@ sudo giocondo-vpn-panel local-node -host vpn.example.com               # the sam
 
 The admin UI is at `https://panel.example.com<PANEL_ADMIN_PATH>/`, the API under the same path. Removal with
 `purge` deletes `panel.env` but not `/var/lib/giocondo-vpn/panel` (the database and the node CA).
+
+## Routing lists for Mihomo clients
+
+`.github/workflows/rules.yml` runs daily and publishes the runetfreedom lists, converted by `deploy/rules/build.sh`, as
+assets of the `rules` release. Mihomo profiles download them from there.
+
+- Before the first panel release that serves `rule-providers`, merge the workflow and run it once by hand
+  (Actions → rules → Run workflow). Otherwise clients get 404 on the lists.
+- A failed run publishes nothing: clients keep the previous lists. Read the log of the run: an unexpected rule type
+  in the source means the conversion has to learn it, not that the check should go.
+- GitHub disables scheduled workflows after 60 days without repository activity, and clients then stay on old lists.
+  Enable the workflow again on the Actions page.
+- Update `MIHOMO_VERSION` and `MIHOMO_SHA256` together.

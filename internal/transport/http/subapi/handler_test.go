@@ -20,8 +20,11 @@ import (
 	"github.com/artemlavr/giocondo/internal/repository/sqlite"
 	"github.com/artemlavr/giocondo/internal/repository/sqlite/hosts"
 	"github.com/artemlavr/giocondo/internal/repository/sqlite/nodes"
+	settingsrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/settings"
 	"github.com/artemlavr/giocondo/internal/repository/sqlite/traffic"
 	"github.com/artemlavr/giocondo/internal/repository/sqlite/users"
+	"github.com/artemlavr/giocondo/internal/service/operation"
+	"github.com/artemlavr/giocondo/internal/service/settings"
 	"github.com/artemlavr/giocondo/internal/service/subscription"
 )
 
@@ -120,9 +123,12 @@ func newFixture(t *testing.T) *fixture {
 
 	mux := http.NewServeMux()
 	h := &Handler{
-		Source: subscription.Source{Users: f.users, Nodes: f.nodes, Hosts: f.hosts},
-		Title:  "Mön VPN",
-		Now:    func() time.Time { return time.Date(2026, 10, 28, 0, 0, 0, 0, time.UTC) },
+		Source: subscription.Source{Users: f.users, Nodes: f.nodes, Hosts: f.hosts, Settings: settings.New(
+			operation.Hooks{Now: time.Now},
+			settingsrepo.New(db),
+			panel.SubscriptionSettings{Title: "Mön VPN", UpdateIntervalHours: 12},
+		)},
+		Now: func() time.Time { return time.Date(2026, 10, 28, 0, 0, 0, 0, time.UTC) },
 	}
 	h.Register(mux)
 	f.srv = httptest.NewServer(mux)

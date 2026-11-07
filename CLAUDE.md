@@ -35,7 +35,7 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/transport/http/api/` | REST adapter with domain-specific service interfaces, route registry and token scopes |
 | `internal/transport/http/web/` | Web adapter with domain-specific service interfaces, sessions, templates, `static/app.js`, `static/style.css` |
 | `internal/model/panel/`, `internal/model/protocol/` | Entities, access policy, protocol parameter models, protocol keys and UUIDs |
-| `internal/repository/sqlite/` | Database open, migration runner and shared helpers (`DB.InTx`, `MapErr`, `Time`); a package per domain beneath it (`users`, `tokens`, `nodes`, `network`, `traffic`, `probes`, `hosts`): `repository.go` with the struct and constructor, one file per query |
+| `internal/repository/sqlite/` | Database open, migration runner and shared helpers (`DB.InTx`, `MapErr`, `Time`); a package per domain beneath it (`users`, `tokens`, `nodes`, `network`, `traffic`, `probes`, `hosts`, `settings`): `repository.go` with the struct and constructor, one file per query |
 | `migrations/` | SQL schema migrations `NNNN_*.sql`, embedded by `migrations.FS` |
 | `internal/service/nodeconfig/` | Desired config preparation, model conversion, WG and monitor credentials |
 | `internal/service/nodestate/` | Agent admission, reported node/installation state, desired config hashes, traffic records, reconciliation pass |
@@ -47,11 +47,13 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/transport/grpc/pb/`, `internal/transport/grpc/v2raystats/` | Generated protobuf/gRPC contracts |
 | `internal/service/singbox/` | Server config model and generator, TLS certificates, WG addresses |
 | `internal/service/subscription/`, `internal/transport/http/subapi/` | Subscriptions, links, sing-box JSON, Mihomo YAML, routing; the `GET /sub/<token>` handler |
+| `internal/service/settings/` | Panel settings changed at runtime: a JSON document per key in the `settings` table, read on every use |
 | `internal/service/provisioning/`, `internal/platform/installation/`, `internal/clients/ssh/` | Installation policy/jobs, embedded installer artifacts and SSH transport |
 | `internal/clients/cloudflare/`, `internal/platform/protocheck/`, `internal/service/nodeprobe/`, `internal/clients/probepoint/`, `internal/transport/http/probeapi/` | Cloudflare DNS; local protocol checks, node probes, the external probe point client and its server API |
 | `internal/worker/events/`, `internal/clients/webhook/` | In-memory event queue/retries and HTTP delivery |
 | `proto/` | Source `.proto` files; generated with `make proto` |
 | `deploy/apt/` | Delivery via deb packages and the apt repository: deb scripts, systemd units, embedded agent installer, repository script |
+| `deploy/rules/` | Conversion of the routing lists to Mihomo `mrs`, published by `.github/workflows/rules.yml` |
 | `install.sh` | One-line server installer (panel + local node), published to GitHub Pages on release |
 | `test/network-e2e/` | Network Docker bench |
 | `build/sing-box/` | A separate Go module for our own core build |
@@ -173,7 +175,8 @@ the WG endpoint has no regular per-user counters.
 
 ## Subscriptions and client compatibility
 
-- `GET /sub/<token>`: `?format=links|singbox|clash` takes precedence over User-Agent.
+- `GET /sub/<token>`: `?format=links|singbox|clash` takes precedence over User-Agent; the administrator's User-Agent rules go before the built-in ones.
+  Formats can be turned off on the Settings page, links cannot: `?format=` for a disabled format is 404, a client detected by User-Agent gets links.
   Hiddify gets base64 links; its rule is checked before Clash/sing-box.
   Karing and sing-box clients get JSON, Mihomo-compatible ones get YAML.
 - The client JSON supports sing-box 1.12+; the server core is versioned separately.
@@ -183,6 +186,11 @@ the WG endpoint has no regular per-user counters.
   but such a user is not in the node working config. Disabled nodes are excluded.
 - Keep the `subscription-userinfo`, `profile-title` with `base64:`,
   `profile-update-interval` and `content-disposition` headers in all formats.
+  `support-url`, `profile-web-page-url` and `announce` with `base64:` are sent only when set on the Settings page.
+- Mihomo profiles use `rule-providers` from the `rules` release (`deploy/rules/build.sh`, `.github/workflows/rules.yml`),
+  not `GEOSITE`/`GEOIP`: FlClash and Clash Verge Rev replace geodata from a profile with files that lack `ru-blocked`, and the
+  profile does not start. Do not bring geodata rules back. `geoipDatURL` and `geositeDatURL` serve Happ. A set added to
+  `allRuleSets` must also be published by the script; `ClashBuiltinRuleSets` in the model lists the same sets (both tested).
 - Routing: private networks direct; `ru-blocked` through the VPN before the RU rules;
   the ru/su/xn--p1ai zones and the corresponding RU categories direct; everything else through the VPN.
   The rule-set source is runetfreedom/russia-v2ray-rules-dat, release branch.
@@ -194,6 +202,7 @@ the WG endpoint has no regular per-user counters.
 - Link parameters are an external contract: Hysteria2 `insecure=1`, password = UUID;
   WireGuard: private key in userinfo, `publickey`, `presharedkey`, `address`, `mtu`.
   Do not treat a parameter unknown to the client as working certificate protection.
+- Subscription settings live in `panel.SubscriptionSettings`, edited on the web `/settings` page. A saved value wins over the env default (`PANEL_SUB_TITLE`). `ClashRoutingYAML` is checked by `panel.ParseClashRouting`: only `rules`, `rule-providers`, `dns` and `sniffer`; it applies only to Mihomo profiles. A new setting is a field with a default and a check in the model, a form field and its use in the subscription with a test of the result; it needs no migration. A stored document that cannot be used is an error, not a fallback to defaults.
 
 ## Web, API and security
 

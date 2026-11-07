@@ -21,6 +21,7 @@ import (
 	"github.com/artemlavr/giocondo/internal/service/nodestate"
 	"github.com/artemlavr/giocondo/internal/service/operation"
 	"github.com/artemlavr/giocondo/internal/service/provisioning"
+	"github.com/artemlavr/giocondo/internal/service/settings"
 	"github.com/artemlavr/giocondo/internal/service/tokens"
 	"github.com/artemlavr/giocondo/internal/service/users"
 	"github.com/artemlavr/giocondo/internal/service/watcher"
@@ -60,6 +61,7 @@ type App struct {
 	executor                 *tasks.Executor
 	credentials              *nodeconfig.Coordinator
 	hosts                    *hosts.Service
+	settings                 *settings.Service
 	queries                  *nodes.Reader
 	provisioning             *provisioning.Service
 	probes                   *nodeprobe.Service
@@ -73,6 +75,7 @@ type App struct {
 	serviceOnce              struct {
 		credentials  sync.Once
 		hosts        sync.Once
+		settings     sync.Once
 		queries      sync.Once
 		provisioning sync.Once
 		probes       sync.Once

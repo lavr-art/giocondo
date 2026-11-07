@@ -92,7 +92,7 @@ func New(cfg Config) (*Handler, error) {
 		"proto":    protoLabel,
 		"base":     func() string { return base },
 	}
-	for _, page := range []string{"login", pageUsers, "user", pageNodes, "node", "tokens"} {
+	for _, page := range []string{"login", pageUsers, "user", pageNodes, "node", "tokens", "settings"} {
 		t, err := template.New("layout.html").Funcs(funcs).ParseFS(templatesFS,
 			"templates/layout.html", "templates/partials.html", "templates/"+page+".html")
 		if err != nil {
@@ -136,6 +136,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /tokens", h.auth(h.tokensPage))
 	mux.HandleFunc("POST /tokens", h.auth(h.createToken))
 	mux.HandleFunc("POST /tokens/{id}/delete", h.auth(h.deleteToken))
+
+	mux.HandleFunc("GET /settings", h.auth(h.settingsPage))
+	mux.HandleFunc("POST /settings", h.auth(h.updateSettings))
 }
 
 // redirect is http.Redirect to a path inside the admin UI (with the Base prefix).

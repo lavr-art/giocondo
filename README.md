@@ -24,11 +24,14 @@ driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Ka
   are in memory and can be lost on agent termination.
 - **Users**: terms, traffic limits, limit resets that keep history, extensions, optional auto-deletion of expired users.
 - **Subscriptions**: base64 links, sing-box JSON (1.12+) or Mihomo YAML, picked by `User-Agent` or `?format=`,
-  with `subscription-userinfo` and profile headers. Host overrides let you publish nodes under other addresses.
+  with `subscription-userinfo` and profile headers; the title, update interval, support link, profile page,
+  announcement, enabled formats and User-Agent rules are set on the Settings page. Host overrides let you publish nodes under other addresses.
 - **Routing**: private networks and Russian zones/categories go direct, blocked resources and everything else go
   through the VPN, based on [runetfreedom/russia-v2ray-rules-dat](https://github.com/runetfreedom/russia-v2ray-rules-dat).
-  sing-box and Mihomo clients get it in the config, Happ in the `routing` response header. Hiddify and other link-based
-  clients configure routing themselves, and native WireGuard configs send all traffic through the VPN.
+  sing-box clients get it in the config, Mihomo clients as rule lists downloaded through the VPN (no geodata setup in
+  FlClash or Clash Verge Rev), Happ in the `routing` response header. Mihomo rules can be changed on the Settings page.
+  Hiddify and other link-based clients configure routing themselves, and native WireGuard configs send all traffic
+  through the VPN.
 - **Web UI and REST API**: `html/template` + htmx with a strict CSP, a secret admin path, and an OpenAPI-described
   API with scoped tokens.
 - **Node provisioning**: install a node over SSH or with a cloud-init snippet; optional Cloudflare DNS records for nodes.
@@ -153,6 +156,7 @@ Main panel settings:
 | `PANEL_ADMIN_PASSWORD` | random | Admin UI password |
 | `PANEL_LISTEN` | `127.0.0.1:8080` | Admin UI and API listener |
 | `PANEL_SUB_LISTEN` | `127.0.0.1:8081` | Subscription listener |
+| `PANEL_SUB_TITLE` | `giocondo-vpn` | Default profile name in clients; the name saved on the Settings page takes precedence |
 | `PANEL_GRPC_LISTEN` | `:9443` | gRPC listener for agents |
 | `PANEL_WEBHOOK_URL`, `PANEL_WEBHOOK_SECRET` | | Event webhooks |
 | `PANEL_AUTODELETE_EXPIRED_DAYS` | `0` | Delete users expired more than N days ago |

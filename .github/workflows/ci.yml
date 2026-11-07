@@ -21,7 +21,7 @@ jobs:
       - name: installer regressions
         run: |
           sh -n install.sh
-          for script in deploy/apt/deb/*.sh deploy/apt/recover.sh; do sh -n "$script"; done
+          for script in deploy/apt/deb/*.sh deploy/apt/recover.sh deploy/rules/build.sh; do sh -n "$script"; done
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.15.0

@@ -1,0 +1,44 @@
+# Publishes the routing lists for clients on Mihomo as assets of the "rules" release. They are not committed
+# to gh-pages: a binary commit every day would keep growing the branch that serves the apt repository.
+name: rules
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: rules
+    env:
+      MIHOMO_VERSION: v1.19.33
+      MIHOMO_SHA256: 132f6f3edf9a65e62f04853aed3358472e0b2b7666daa8419edfa2ddf5bb6323
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: make sing-box
+      - name: mihomo
+        run: |
+          curl -fsSL --retry 3 -o mihomo.gz \
+            "https://github.com/MetaCubeX/mihomo/releases/download/$MIHOMO_VERSION/mihomo-linux-amd64-$MIHOMO_VERSION.gz"
+          echo "$MIHOMO_SHA256  mihomo.gz" | sha256sum -c -
+          gzip -dc mihomo.gz > bin/mihomo
+          chmod +x bin/mihomo
+      - name: build
+        run: SING_BOX=bin/sing-box MIHOMO=bin/mihomo deploy/rules/build.sh lists
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view rules >/dev/null 2>&1 || gh release create rules \
+            --title "Routing rule lists" --prerelease --latest=false \
+            --notes "Updated daily for clients on Mihomo. Converted from https://github.com/runetfreedom/russia-v2ray-rules-dat (GPL-3.0) by deploy/rules/build.sh."
+          gh release upload rules lists/*.mrs --clobber

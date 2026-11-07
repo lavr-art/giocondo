@@ -36,6 +36,9 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 	in := panel.SubscriptionSettings{
 		Title:               r.FormValue("title"),
 		UpdateIntervalHours: interval,
+		SupportURL:          r.FormValue("support_url"),
+		ProfilePageURL:      r.FormValue("profile_page_url"),
+		Announce:            r.FormValue("announce"),
 		ClashRoutingEnabled: r.FormValue("clash_routing_enabled") != "",
 		ClashRoutingYAML:    r.FormValue("clash_routing_yaml"),
 	}

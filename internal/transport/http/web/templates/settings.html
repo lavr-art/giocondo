@@ -9,6 +9,13 @@
     <p><label>Update interval, hours<br>
       <input class="narrow" type="number" name="update_interval_hours" value="{{.Data.UpdateIntervalHours}}" required min="1" max="168"></label></p>
     <p class="muted">How often clients should refresh the subscription.</p>
+    <p><label>Support link<br>
+      <input class="url" type="url" name="support_url" value="{{.Data.SupportURL}}" placeholder="https://t.me/your_support" maxlength="2048"></label></p>
+    <p><label>Profile page<br>
+      <input class="url" type="url" name="profile_page_url" value="{{.Data.ProfilePageURL}}" placeholder="https://example.com" maxlength="2048"></label></p>
+    <p><label>Announcement<br>
+      <input type="text" name="announce" value="{{.Data.Announce}}" maxlength="200"></label></p>
+    <p class="muted">Optional. Sent as the Support-Url, Profile-Web-Page-Url and Announce headers to everyone with a subscription; only some clients, such as Happ, show them. Leave a field empty to send nothing.</p>
     <h3>Mihomo routing</h3>
     <p class="muted">Applies only to clients on Mihomo: FlClash, Clash Verge Rev and others. sing-box and Happ keep the built-in rules.</p>
     <p><label><input type="checkbox" name="clash_routing_enabled"{{if .Data.ClashRoutingEnabled}} checked{{end}}> Use these rules</label></p>

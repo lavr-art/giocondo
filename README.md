@@ -24,7 +24,8 @@ driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Ka
   are in memory and can be lost on agent termination.
 - **Users**: terms, traffic limits, limit resets that keep history, extensions, optional auto-deletion of expired users.
 - **Subscriptions**: base64 links, sing-box JSON (1.12+) or Mihomo YAML, picked by `User-Agent` or `?format=`,
-  with `subscription-userinfo` and profile headers. Host overrides let you publish nodes under other addresses.
+  with `subscription-userinfo` and profile headers; the title, update interval, support link, profile page and
+  announcement are set on the Settings page. Host overrides let you publish nodes under other addresses.
 - **Routing**: private networks and Russian zones/categories go direct, blocked resources and everything else go
   through the VPN, based on [runetfreedom/russia-v2ray-rules-dat](https://github.com/runetfreedom/russia-v2ray-rules-dat).
   sing-box clients get it in the config, Mihomo clients as rule lists downloaded through the VPN (no geodata setup in

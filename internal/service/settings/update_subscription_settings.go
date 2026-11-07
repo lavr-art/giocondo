@@ -12,6 +12,10 @@ import (
 // UpdateSubscriptionSettings validates and stores the whole document.
 func (s *Service) UpdateSubscriptionSettings(ctx context.Context, in panel.SubscriptionSettings) error {
 	in.Title = strings.TrimSpace(in.Title)
+	in.SupportURL = strings.TrimSpace(in.SupportURL)
+	in.ProfilePageURL = strings.TrimSpace(in.ProfilePageURL)
+	in.Announce = strings.TrimSpace(in.Announce)
+
 	if err := in.Validate(); err != nil {
 		return err
 	}

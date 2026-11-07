@@ -550,3 +550,97 @@ func TestSettingsFormReportsInvalidRoutingThroughHTMX(t *testing.T) {
 		t.Fatalf("a rejected form changed the settings: %+v", got)
 	}
 }
+
+func TestSubscriptionHeadersFromSettings(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newService(t, newClock(time.Now()))
+
+	if _, err := s.Nodes.CreateNode(ctx, panel.CreateNodeInput{
+		Name: "n1", Host: "n1.example.com", VLESS: &panel.VLESSInput{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := s.Users.CreateUser(ctx, panel.CreateUserInput{Name: "alice"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sub := subscriptionServer(t, s).URL + "/sub/" + subscriptionToken(t, s, u.ID)
+	admin, c := settingsServer(t, s)
+	formats := []string{"links", "singbox", "clash"}
+	headers := []string{"Support-Url", "Profile-Web-Page-Url", "Announce"}
+
+	before := map[string]string{}
+
+	for _, format := range formats {
+		resp, body := fetch(t, sub+"?format="+format)
+		before[format] = body
+
+		for _, name := range headers {
+			if _, set := resp.Header[name]; set {
+				t.Errorf("%s: %s is sent without a setting", format, name)
+			}
+		}
+	}
+
+	const announce = "Плановые работы в субботу"
+
+	resp, body := postForm(t, c, admin, "/settings", url.Values{
+		"title": {"VPN"}, "update_interval_hours": {"12"},
+		"support_url": {"https://t.me/support"}, "profile_page_url": {"https://example.com/vpn"}, "announce": {announce},
+	})
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("POST: status = %d, body = %q", resp.StatusCode, body)
+	}
+
+	want := map[string]string{
+		"Support-Url":          "https://t.me/support",
+		"Profile-Web-Page-Url": "https://example.com/vpn",
+		"Announce":             "base64:" + base64.StdEncoding.EncodeToString([]byte(announce)),
+	}
+
+	for _, format := range formats {
+		resp, body := fetch(t, sub+"?format="+format)
+		for name, value := range want {
+			if got := resp.Header.Get(name); got != value {
+				t.Errorf("%s: %s = %q, want %q", format, name, got, value)
+			}
+		}
+
+		if body != before[format] {
+			t.Errorf("%s: the headers changed the body", format)
+		}
+	}
+
+	_, page := getPage(t, c, admin.URL+"/settings")
+	for _, value := range []string{"https://t.me/support", "https://example.com/vpn", announce} {
+		if !strings.Contains(page, value) {
+			t.Errorf("the page does not show %q", value)
+		}
+	}
+
+	resp, body = postForm(t, c, admin, "/settings", url.Values{
+		"title": {"VPN"}, "update_interval_hours": {"12"}, "support_url": {"http://example.com"},
+	})
+	if resp.StatusCode != http.StatusBadRequest || !strings.Contains(body, "support link") {
+		t.Errorf("plain HTTP link: status = %d, body = %q", resp.StatusCode, body)
+	}
+
+	if resp, _ := fetch(t, sub); resp.Header.Get("Support-Url") != want["Support-Url"] {
+		t.Errorf("a rejected form changed the header: %q", resp.Header.Get("Support-Url"))
+	}
+
+	// Clearing a field removes its header.
+	resp, _ = postForm(t, c, admin, "/settings", url.Values{"title": {"VPN"}, "update_interval_hours": {"12"}})
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("clearing POST: status = %d", resp.StatusCode)
+	}
+
+	cleared, _ := fetch(t, sub)
+	for _, name := range headers {
+		if _, set := cleared.Header[name]; set {
+			t.Errorf("%s is still sent after clearing it", name)
+		}
+	}
+}

@@ -185,6 +185,7 @@ the WG endpoint has no regular per-user counters.
   but such a user is not in the node working config. Disabled nodes are excluded.
 - Keep the `subscription-userinfo`, `profile-title` with `base64:`,
   `profile-update-interval` and `content-disposition` headers in all formats.
+  `support-url`, `profile-web-page-url` and `announce` with `base64:` are sent only when set on the Settings page.
 - Mihomo profiles use `rule-providers` from the `rules` release (`deploy/rules/build.sh`, `.github/workflows/rules.yml`),
   not `GEOSITE`/`GEOIP`: FlClash and Clash Verge Rev replace geodata from a profile with files that lack `ru-blocked`, and the
   profile does not start. Do not bring geodata rules back. `geoipDatURL` and `geositeDatURL` serve Happ. A set added to

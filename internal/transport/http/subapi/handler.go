@@ -105,6 +105,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		hdr.Set("Routing", routing)
 	}
 
+	if v := p.Settings.SupportURL; v != "" {
+		hdr.Set("Support-Url", v)
+	}
+
+	if v := p.Settings.ProfilePageURL; v != "" {
+		hdr.Set("Profile-Web-Page-Url", v)
+	}
+
+	if v := p.Settings.Announce; v != "" {
+		hdr.Set("Announce", "base64:"+base64.StdEncoding.EncodeToString([]byte(v)))
+	}
+
 	//nolint:gosec // body is a generated subscription document, not HTML; the content type is set above.
 	_, _ = w.Write(body)
 }

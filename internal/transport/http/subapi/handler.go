@@ -53,9 +53,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	format, ok := subscription.ParseFormat(r.URL.Query().Get("format"))
+	format, ok := subscription.ChooseFormat(p.Settings, r.URL.Query().Get("format"), r.UserAgent())
 	if !ok {
-		format = subscription.DetectFormat(r.UserAgent())
+		http.Error(w, "subscription format is disabled", http.StatusNotFound)
+
+		return
 	}
 
 	var (

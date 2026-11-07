@@ -33,12 +33,22 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rules, err := panel.ParseUserAgentRules(r.FormValue("user_agent_rules"))
+	if err != nil {
+		h.fail(w, r, err)
+
+		return
+	}
+
 	in := panel.SubscriptionSettings{
 		Title:               r.FormValue("title"),
 		UpdateIntervalHours: interval,
 		SupportURL:          r.FormValue("support_url"),
 		ProfilePageURL:      r.FormValue("profile_page_url"),
 		Announce:            r.FormValue("announce"),
+		SingBoxDisabled:     r.FormValue("singbox_enabled") == "",
+		ClashDisabled:       r.FormValue("clash_enabled") == "",
+		UserAgentRules:      rules,
 		ClashRoutingEnabled: r.FormValue("clash_routing_enabled") != "",
 		ClashRoutingYAML:    r.FormValue("clash_routing_yaml"),
 	}

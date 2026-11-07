@@ -175,7 +175,8 @@ the WG endpoint has no regular per-user counters.
 
 ## Subscriptions and client compatibility
 
-- `GET /sub/<token>`: `?format=links|singbox|clash` takes precedence over User-Agent.
+- `GET /sub/<token>`: `?format=links|singbox|clash` takes precedence over User-Agent; the administrator's User-Agent rules go before the built-in ones.
+  Formats can be turned off on the Settings page, links cannot: `?format=` for a disabled format is 404, a client detected by User-Agent gets links.
   Hiddify gets base64 links; its rule is checked before Clash/sing-box.
   Karing and sing-box clients get JSON, Mihomo-compatible ones get YAML.
 - The client JSON supports sing-box 1.12+; the server core is versioned separately.

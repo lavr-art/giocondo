@@ -9,6 +9,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -32,7 +33,7 @@ func TestSubscriptionSettingsSources(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if got != panel.DefaultSubscriptionSettings() {
+		if !reflect.DeepEqual(got, panel.DefaultSubscriptionSettings()) {
 			t.Fatalf("settings = %+v", got)
 		}
 	})
@@ -60,7 +61,7 @@ func TestSubscriptionSettingsSources(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if got != stored {
+		if !reflect.DeepEqual(got, stored) {
 			t.Fatalf("settings = %+v, want %+v", got, stored)
 		}
 	})
@@ -412,7 +413,8 @@ func TestSettingsPage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if want := (panel.SubscriptionSettings{Title: "Мой VPN", UpdateIntervalHours: 6}); got != want {
+			want := panel.SubscriptionSettings{Title: "Мой VPN", UpdateIntervalHours: 6, SingBoxDisabled: true, ClashDisabled: true}
+			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("stored %+v, want %+v", got, want)
 			}
 
@@ -488,6 +490,7 @@ func TestClashRoutingFromSettingsReachesSubscription(t *testing.T) {
 
 	resp, body := postForm(t, c, admin, "/settings", url.Values{
 		"title": {"VPN"}, "update_interval_hours": {"12"}, "clash_routing_enabled": {"on"}, "clash_routing_yaml": {rules},
+		"singbox_enabled": {"on"}, "clash_enabled": {"on"},
 	})
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("POST: status = %d, body = %q", resp.StatusCode, body)
@@ -589,6 +592,7 @@ func TestSubscriptionHeadersFromSettings(t *testing.T) {
 	resp, body := postForm(t, c, admin, "/settings", url.Values{
 		"title": {"VPN"}, "update_interval_hours": {"12"},
 		"support_url": {"https://t.me/support"}, "profile_page_url": {"https://example.com/vpn"}, "announce": {announce},
+		"singbox_enabled": {"on"}, "clash_enabled": {"on"},
 	})
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("POST: status = %d, body = %q", resp.StatusCode, body)
@@ -643,4 +647,114 @@ func TestSubscriptionHeadersFromSettings(t *testing.T) {
 			t.Errorf("%s is still sent after clearing it", name)
 		}
 	}
+}
+
+func TestSubscriptionFormatsFromSettings(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newService(t, newClock(time.Now()))
+
+	if _, err := s.Nodes.CreateNode(ctx, panel.CreateNodeInput{
+		Name: "n1", Host: "n1.example.com", VLESS: &panel.VLESSInput{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := s.Users.CreateUser(ctx, panel.CreateUserInput{Name: "alice"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sub := subscriptionServer(t, s).URL + "/sub/" + subscriptionToken(t, s, u.ID)
+	admin, c := settingsServer(t, s)
+
+	// request returns the status and the extension of the served format.
+	request := func(t *testing.T, query, userAgent string) (int, string) {
+		t.Helper()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sub+query, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req.Header.Set("User-Agent", userAgent)
+
+		resp, _ := do(t, http.DefaultClient, req)
+
+		_, ext, _ := strings.Cut(resp.Header.Get("Content-Type"), "/")
+		ext, _, _ = strings.Cut(ext, ";")
+
+		return resp.StatusCode, ext
+	}
+
+	save := func(t *testing.T, form url.Values) {
+		t.Helper()
+
+		form.Set("title", "VPN")
+		form.Set("update_interval_hours", "12")
+
+		if resp, body := postForm(t, c, admin, "/settings", form); resp.StatusCode != http.StatusSeeOther {
+			t.Fatalf("POST: status = %d, body = %q", resp.StatusCode, body)
+		}
+	}
+
+	const (
+		links   = "plain"
+		singBox = "json"
+		clash   = "yaml"
+		flclash = "FlClash/v0.9.3 clash-verge Platform/macos"
+		sfm     = "SFM/1.14.4"
+	)
+
+	check := func(t *testing.T, query, userAgent string, wantStatus int, wantFormat string) {
+		t.Helper()
+
+		status, format := request(t, query, userAgent)
+		if status != wantStatus || (wantFormat != "" && format != wantFormat) {
+			t.Errorf("%q as %q: status = %d, format = %q, want %d, %q", query, userAgent, status, format, wantStatus, wantFormat)
+		}
+	}
+
+	// A panel that saved nothing serves everything, as before the setting existed.
+	check(t, "?format=clash", "", http.StatusOK, clash)
+	check(t, "?format=singbox", "", http.StatusOK, singBox)
+	check(t, "", flclash, http.StatusOK, clash)
+	check(t, "", sfm, http.StatusOK, singBox)
+
+	save(t, url.Values{"singbox_enabled": {"on"}})
+	check(t, "?format=clash", "", http.StatusNotFound, "")
+	check(t, "?format=singbox", "", http.StatusOK, singBox)
+	check(t, "", flclash, http.StatusOK, links)
+	check(t, "", sfm, http.StatusOK, singBox)
+
+	save(t, url.Values{"clash_enabled": {"on"}})
+	check(t, "?format=singbox", "", http.StatusNotFound, "")
+	check(t, "?format=clash", "", http.StatusOK, clash)
+	check(t, "", sfm, http.StatusOK, links)
+
+	save(t, url.Values{"singbox_enabled": {"on"}, "clash_enabled": {"on"}, "user_agent_rules": {"MyClient=clash\nFlClash=singbox"}})
+	check(t, "", "myclient/2.0", http.StatusOK, clash)
+	check(t, "", flclash, http.StatusOK, singBox)
+	check(t, "?format=links", "myclient/2.0", http.StatusOK, links)
+
+	_, page := getPage(t, c, admin.URL+"/settings")
+	for _, want := range []string{`name="singbox_enabled" checked`, `name="clash_enabled" checked`, "MyClient=clash\nFlClash=singbox"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page lacks %q", want)
+		}
+	}
+
+	if resp, body := postForm(t, c, admin, "/settings", url.Values{
+		"title": {"VPN"}, "update_interval_hours": {"12"}, "user_agent_rules": {"MyClient"},
+	}); resp.StatusCode != http.StatusBadRequest || !strings.Contains(body, "client=format") {
+		t.Errorf("bad rule: status = %d, body = %q", resp.StatusCode, body)
+	}
+
+	// A disabled format is refused only after the token and the user status are checked.
+	save(t, url.Values{})
+
+	if _, err := s.Users.UpdateUser(ctx, u.ID, panel.UpdateUserInput{Enabled: new(false)}); err != nil {
+		t.Fatal(err)
+	}
+
+	check(t, "?format=clash", "", http.StatusForbidden, "")
 }

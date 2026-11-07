@@ -16,6 +16,15 @@
     <p><label>Announcement<br>
       <input type="text" name="announce" value="{{.Data.Announce}}" maxlength="200"></label></p>
     <p class="muted">Optional. Sent as the Support-Url, Profile-Web-Page-Url and Announce headers to everyone with a subscription; only some clients, such as Happ, show them. Leave a field empty to send nothing.</p>
+    <h3>Formats</h3>
+    <p class="row">
+      <label><input type="checkbox" name="singbox_enabled"{{if not .Data.SingBoxDisabled}} checked{{end}}> sing-box JSON</label>
+      <label><input type="checkbox" name="clash_enabled"{{if not .Data.ClashDisabled}} checked{{end}}> Mihomo YAML</label>
+    </p>
+    <p class="muted">Links are always on. A client detected by User-Agent gets links instead of a disabled format, and links carry no routing rules, except for Happ. A request with ?format= for a disabled format gets 404.</p>
+    <p><label>User-Agent rules, one client=format per line<br>
+      <textarea class="code" name="user_agent_rules" rows="4" cols="80" spellcheck="false" placeholder="MyClient=clash">{{.Data.UserAgentRulesText}}</textarea></label></p>
+    <p class="muted">The client is any part of the User-Agent, ignoring case; the format is links, singbox or clash. These rules go before the built-in ones, so they can change what a known client gets. A wrong format can leave a client without routing or unable to read the subscription.</p>
     <h3>Mihomo routing</h3>
     <p class="muted">Applies only to clients on Mihomo: FlClash, Clash Verge Rev and others. sing-box and Happ keep the built-in rules.</p>
     <p><label><input type="checkbox" name="clash_routing_enabled"{{if .Data.ClashRoutingEnabled}} checked{{end}}> Use these rules</label></p>

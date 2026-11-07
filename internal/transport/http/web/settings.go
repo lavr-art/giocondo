@@ -33,7 +33,12 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in := panel.SubscriptionSettings{Title: r.FormValue("title"), UpdateIntervalHours: interval}
+	in := panel.SubscriptionSettings{
+		Title:               r.FormValue("title"),
+		UpdateIntervalHours: interval,
+		ClashRoutingEnabled: r.FormValue("clash_routing_enabled") != "",
+		ClashRoutingYAML:    r.FormValue("clash_routing_yaml"),
+	}
 	if err := h.Settings.UpdateSubscriptionSettings(r.Context(), in); err != nil {
 		h.fail(w, r, err)
 

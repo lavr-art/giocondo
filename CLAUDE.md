@@ -53,6 +53,7 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/worker/events/`, `internal/clients/webhook/` | In-memory event queue/retries and HTTP delivery |
 | `proto/` | Source `.proto` files; generated with `make proto` |
 | `deploy/apt/` | Delivery via deb packages and the apt repository: deb scripts, systemd units, embedded agent installer, repository script |
+| `deploy/rules/` | Conversion of the routing lists to Mihomo `mrs`, published by `.github/workflows/rules.yml` |
 | `install.sh` | One-line server installer (panel + local node), published to GitHub Pages on release |
 | `test/network-e2e/` | Network Docker bench |
 | `build/sing-box/` | A separate Go module for our own core build |
@@ -184,6 +185,10 @@ the WG endpoint has no regular per-user counters.
   but such a user is not in the node working config. Disabled nodes are excluded.
 - Keep the `subscription-userinfo`, `profile-title` with `base64:`,
   `profile-update-interval` and `content-disposition` headers in all formats.
+- Mihomo profiles use `rule-providers` from the `rules` release (`deploy/rules/build.sh`, `.github/workflows/rules.yml`),
+  not `GEOSITE`/`GEOIP`: FlClash and Clash Verge Rev replace geodata from a profile with files that lack `ru-blocked`, and the
+  profile does not start. Do not bring geodata rules back. `geoipDatURL` and `geositeDatURL` serve Happ. A set added to
+  `allRuleSets` must also be published by the script; `ClashBuiltinRuleSets` in the model lists the same sets (both tested).
 - Routing: private networks direct; `ru-blocked` through the VPN before the RU rules;
   the ru/su/xn--p1ai zones and the corresponding RU categories direct; everything else through the VPN.
   The rule-set source is runetfreedom/russia-v2ray-rules-dat, release branch.
@@ -195,7 +200,7 @@ the WG endpoint has no regular per-user counters.
 - Link parameters are an external contract: Hysteria2 `insecure=1`, password = UUID;
   WireGuard: private key in userinfo, `publickey`, `presharedkey`, `address`, `mtu`.
   Do not treat a parameter unknown to the client as working certificate protection.
-- Subscription settings live in `panel.SubscriptionSettings`, edited on the web `/settings` page. A saved value wins over the env default (`PANEL_SUB_TITLE`). A new setting is a field with a default and a check in the model, a form field and its use in the subscription with a test of the result; it needs no migration. A stored document that cannot be used is an error, not a fallback to defaults.
+- Subscription settings live in `panel.SubscriptionSettings`, edited on the web `/settings` page. A saved value wins over the env default (`PANEL_SUB_TITLE`). `ClashRoutingYAML` is checked by `panel.ParseClashRouting`: only `rules`, `rule-providers`, `dns` and `sniffer`; it applies only to Mihomo profiles. A new setting is a field with a default and a check in the model, a form field and its use in the subscription with a test of the result; it needs no migration. A stored document that cannot be used is an error, not a fallback to defaults.
 
 ## Web, API and security
 

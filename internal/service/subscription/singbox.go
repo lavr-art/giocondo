@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/artemlavr/giocondo/internal/model/panel"
 	"github.com/artemlavr/giocondo/internal/model/protocol"
 )
 
@@ -11,8 +12,8 @@ import (
 // WireGuard as an endpoint. Checked with `sing-box check` on 1.12 and 1.14.
 
 const (
-	tagProxy  = "proxy"
-	tagAuto   = "auto"
+	tagProxy  = panel.ClashGroupProxy
+	tagAuto   = panel.ClashGroupAuto
 	tagDirect = "direct"
 	tagDNSRem = "dns-remote"
 	tagDNSLoc = "dns-local"

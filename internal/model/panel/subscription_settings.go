@@ -22,6 +22,10 @@ const (
 type SubscriptionSettings struct {
 	Title               string `json:"title"`                 // profile name in the client
 	UpdateIntervalHours int    `json:"update_interval_hours"` // how often a client refreshes the subscription
+
+	// ClashRoutingEnabled applies ClashRoutingYAML to Mihomo profiles; the YAML stays saved while it is off.
+	ClashRoutingEnabled bool   `json:"clash_routing_enabled"`
+	ClashRoutingYAML    string `json:"clash_routing_yaml"`
 }
 
 // DefaultSubscriptionSettings returns the settings of a panel that has none stored.
@@ -48,6 +52,18 @@ func (s SubscriptionSettings) Validate() error {
 
 	if h := s.UpdateIntervalHours; h < minSubscriptionUpdateIntervalHours || h > maxSubscriptionUpdateIntervalHours {
 		return InvalidSubscriptionUpdateInterval()
+	}
+
+	if strings.TrimSpace(s.ClashRoutingYAML) == "" {
+		if s.ClashRoutingEnabled {
+			return fmt.Errorf("%w: Mihomo routing is enabled without rules", ErrInvalid)
+		}
+
+		return nil
+	}
+
+	if _, err := ParseClashRouting(s.ClashRoutingYAML); err != nil {
+		return err
 	}
 
 	return nil

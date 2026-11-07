@@ -442,3 +442,111 @@ func TestSettingsPage(t *testing.T) {
 		})
 	}
 }
+
+// settingsServer serves the settings page and signs in.
+func settingsServer(t *testing.T, s *serviceFixture) (*httptest.Server, *http.Client) {
+	t.Helper()
+
+	ui, err := web.New(web.Config{Dependencies: web.Dependencies{Settings: s.Settings}, Password: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mux := http.NewServeMux()
+	ui.Register(mux)
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	return srv, adminClient(t, srv, "")
+}
+
+func TestClashRoutingFromSettingsReachesSubscription(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newService(t, newClock(time.Now()))
+
+	if _, err := s.Nodes.CreateNode(ctx, panel.CreateNodeInput{
+		Name: "n1", Host: "n1.example.com", VLESS: &panel.VLESSInput{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := s.Users.CreateUser(ctx, panel.CreateUserInput{Name: "alice"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sub := subscriptionServer(t, s).URL + "/sub/" + subscriptionToken(t, s, u.ID)
+	admin, c := settingsServer(t, s)
+
+	before := map[string]string{}
+	for _, format := range []string{"links", "singbox"} {
+		_, before[format] = fetch(t, sub+"?format="+format)
+	}
+
+	const rules = "rules:\n  - DOMAIN-SUFFIX,ir,DIRECT\n  - MATCH,proxy\n"
+
+	resp, body := postForm(t, c, admin, "/settings", url.Values{
+		"title": {"VPN"}, "update_interval_hours": {"12"}, "clash_routing_enabled": {"on"}, "clash_routing_yaml": {rules},
+	})
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("POST: status = %d, body = %q", resp.StatusCode, body)
+	}
+
+	_, clash := fetch(t, sub+"?format=clash")
+	if !strings.Contains(clash, "DOMAIN-SUFFIX,ir,DIRECT") || strings.Contains(clash, "ru-blocked") {
+		t.Errorf("clash profile did not take the saved rules:\n%s", clash)
+	}
+
+	for format, want := range before {
+		if _, got := fetch(t, sub+"?format="+format); got != want {
+			t.Errorf("%s: Clash routing changed the body", format)
+		}
+	}
+
+	_, page := getPage(t, c, admin.URL+"/settings")
+	if !strings.Contains(page, "DOMAIN-SUFFIX,ir,DIRECT") || !strings.Contains(page, `name="clash_routing_enabled" checked`) {
+		t.Errorf("the page does not show the saved rules:\n%s", page)
+	}
+
+	if strings.Contains(page, "style=") || strings.Contains(page, "onclick=") {
+		t.Error("the page breaks the CSP with inline styles or handlers")
+	}
+}
+
+// A rejected form keeps what was typed: the page is boosted, so htmx shows the error without leaving it.
+func TestSettingsFormReportsInvalidRoutingThroughHTMX(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newService(t, newClock(time.Now()))
+	admin, c := settingsServer(t, s)
+
+	_, page := getPage(t, c, admin.URL+"/settings")
+	if !strings.Contains(page, `hx-boost="true"`) {
+		t.Error("the settings form is not boosted")
+	}
+
+	form := url.Values{"title": {"VPN"}, "update_interval_hours": {"12"}, "clash_routing_enabled": {"on"}, "clash_routing_yaml": {"proxies: []\n"}}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, admin.URL+"/settings", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", admin.URL)
+	req.Header.Set("Hx-Request", "true")
+
+	resp, _ := do(t, c, req)
+	if resp.StatusCode != http.StatusBadRequest || !strings.Contains(resp.Header.Get("Hx-Trigger"), "is not allowed") {
+		t.Fatalf("status = %d, Hx-Trigger = %q", resp.StatusCode, resp.Header.Get("Hx-Trigger"))
+	}
+
+	got, err := s.Settings.SubscriptionSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.ClashRoutingEnabled || got.ClashRoutingYAML != "" {
+		t.Fatalf("a rejected form changed the settings: %+v", got)
+	}
+}

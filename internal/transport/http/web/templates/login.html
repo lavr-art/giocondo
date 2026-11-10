@@ -1,10 +1,21 @@
 {{define "content"}}
-<div class="card login">
-  <h1>giocondo-vpn</h1>
-  <form method="post" action="{{base}}/login">
-    <input type="hidden" name="next" value="{{.Data}}">
-    <p><input type="password" name="password" placeholder="Password" autofocus required autocomplete="current-password"></p>
-    <button class="primary">Sign in</button>
-  </form>
+<div class="flex min-h-[70vh] items-center justify-center">
+  <div class="card w-full max-w-sm">
+    <header class="items-center text-center">
+      <span class="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">{{template "icon" "shield"}}</span>
+      <h2>giocondo-vpn</h2>
+      <p>Sign in to the admin panel</p>
+    </header>
+    <section>
+      <form method="post" action="{{base}}/login" class="grid gap-4">
+        <input type="hidden" name="next" value="{{.Data}}">
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" autofocus required autocomplete="current-password">
+        </div>
+        <button class="btn w-full">Sign in</button>
+      </form>
+    </section>
+  </div>
 </div>
 {{end}}

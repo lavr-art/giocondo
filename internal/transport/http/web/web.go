@@ -5,7 +5,9 @@ package web
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html/template"
@@ -81,6 +83,11 @@ func New(cfg Config) (*Handler, error) {
 		limit: &limiter{now: time.Now}, pages: map[string]*template.Template{}, base: base,
 	}
 
+	assets, err := assetVersions()
+	if err != nil {
+		return nil, err
+	}
+
 	funcs := template.FuncMap{
 		"bytes":    humanBytes,
 		"gb":       func(b int64) string { return strconv.FormatFloat(float64(b)/(1<<30), 'f', -1, 64) },
@@ -91,8 +98,9 @@ func New(cfg Config) (*Handler, error) {
 		"status":   statusLabel,
 		"proto":    protoLabel,
 		"base":     func() string { return base },
+		"asset":    func(name string) string { return base + "/static/" + name + "?v=" + assets[name] },
 	}
-	for _, page := range []string{"login", pageUsers, "user", pageNodes, "node", "tokens", "settings"} {
+	for _, page := range []string{"login", pageDashboard, pageUsers, "user", pageNodes, "node", "tokens", "settings"} {
 		t, err := template.New("layout.html").Funcs(funcs).ParseFS(templatesFS,
 			"templates/layout.html", "templates/partials.html", "templates/"+page+".html")
 		if err != nil {
@@ -112,7 +120,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /login", h.loginPage)
 	mux.HandleFunc("POST /login", h.login)
 	mux.HandleFunc("POST /logout", h.auth(h.logout))
-	mux.HandleFunc("GET /{$}", h.auth(func(w http.ResponseWriter, r *http.Request) { h.redirect(w, r, "/users") }))
+	mux.HandleFunc("GET /{$}", h.auth(h.dashboardPage))
 
 	mux.HandleFunc("GET /users", h.auth(h.usersPage))
 	mux.HandleFunc("POST /users", h.auth(h.createUser))
@@ -144,6 +152,33 @@ func (h *Handler) Register(mux *http.ServeMux) {
 // redirect is http.Redirect to a path inside the admin UI (with the Base prefix).
 func (h *Handler) redirect(w http.ResponseWriter, r *http.Request, path string) {
 	http.Redirect(w, r, h.base+path, http.StatusSeeOther)
+}
+
+// assetVersions returns a content hash per static file. Asset URLs carry it, so a browser that cached
+// a file for a day still loads the new one after an upgrade.
+func assetVersions() (map[string]string, error) {
+	out := map[string]string{}
+
+	err := fs.WalkDir(staticFS, "static", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+
+		b, err := staticFS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		sum := sha256.Sum256(b)
+		out[strings.TrimPrefix(path, "static/")] = hex.EncodeToString(sum[:4])
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("static assets: %w", err)
+	}
+
+	return out, nil
 }
 
 func cacheForever(next http.Handler) http.Handler {

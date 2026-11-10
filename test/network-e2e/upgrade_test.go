@@ -89,7 +89,7 @@ func TestUpgrade(t *testing.T) {
 		}
 		b.checked(b.shell("GIOCONDO_RESTORE_FROM=" + shellQuote(snapshot) + " dpkg --unpack " + strings.Join(debs, " ")))
 		b.checked(b.shell("sh " + recovery + " restore-state " + shellQuote(snapshot)))
-		b.checked(b.shell("dpkg --configure -a"))
+		b.checked(b.shell("GIOCONDO_RESTORE_FROM=" + shellQuote(snapshot) + " dpkg --configure -a"))
 		b.checked(b.shell("systemctl daemon-reload; while IFS= read -r service; do systemctl start \"$service\"; done < " + shellQuote(snapshot+"/active-services")))
 		b.upgradeTraffic(selected)
 		b.equal(b.identity(), before, "identity after manual recovery")

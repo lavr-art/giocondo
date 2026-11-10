@@ -1,0 +1,8 @@
+/* Source of static/app.css, built by `make css` with the standalone Tailwind CLI.
+   basecoat.bundle.css is Basecoat v1.1.0 (MIT, see basecoat.LICENSE.md); static/basecoat.min.js is the
+   matching runtime with the sidebar, toast and tabs components. static/charts.min.js is Chart.js v4.5.1
+   (MIT, see chartjs.LICENSE.md) followed by the Basecoat chart wrapper. Update Basecoat files from one release. */
+@import "tailwindcss" source(none);
+@source "../templates";
+@source "../static/app.js";
+@import "./basecoat.bundle.css";

@@ -1,52 +1,89 @@
 {{define "content"}}
 {{with .Data.User}}
-<h1>{{.Name}} <span class="badge {{.Status}}">{{status .Status}}</span></h1>
-<div class="card row">
-  <img class="qr" src="{{base}}/users/{{.ID}}/qr.png" alt="Subscription QR code">
-  <div class="grow">
-    <p><b>Subscription link</b>: add it to Hiddify, Happ, v2rayNG, sing-box or Clash.</p>
-    <p><input class="url" id="sub-url" type="text" readonly value="{{.SubscriptionURL}}"></p>
-    <p class="row"><button type="button" data-copy="sub-url">Copy</button>
-      <form class="inline" method="post" action="{{base}}/users/{{.ID}}/rotate-token" hx-boost="true" hx-confirm="Issue a new link? The old one will stop working for all clients."><button>New link</button></form>
-      <span class="muted">the old link will stop working</span></p>
-    <p>Traffic: <b>{{bytes .UsedBytes}}</b>{{if .TrafficLimitBytes}} of {{bytes .TrafficLimitBytes}}{{else}} (no limit){{end}}
-      · ↑ {{bytes .UsedUpBytes}} ↓ {{bytes .UsedDownBytes}}<br>
-      Term: <b>{{date .ExpiresAt}}</b> · created {{datetime .CreatedAt}}</p>
+<div class="flex flex-wrap items-center gap-3">
+  <h1 class="text-2xl font-semibold tracking-tight">{{.Name}}</h1>
+  {{template "status_badge" .Status}}
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[auto_1fr]">
+  <div class="card items-center">
+    <section><img class="size-56 rounded-md bg-white p-2 [image-rendering:pixelated]" src="{{base}}/users/{{.ID}}/qr.png" alt="Subscription QR code"></section>
+  </div>
+  <div class="card">
+    <header>
+      <h2>Subscription link</h2>
+      <p>Add it to Hiddify, Happ, v2rayNG, sing-box or Clash.</p>
+    </header>
+    <section class="flex flex-col gap-4">
+      <div class="flex gap-2">
+        <input class="input font-mono text-xs" id="sub-url" type="text" readonly value="{{.SubscriptionURL}}">
+        <button type="button" class="btn" data-variant="outline" data-size="icon" aria-label="Copy" data-copy="sub-url">{{template "icon" "copy"}}</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <form method="post" action="{{base}}/users/{{.ID}}/rotate-token" hx-boost="true" hx-confirm="Issue a new link? The old one will stop working for all clients."><button class="btn" data-variant="outline" data-size="sm">New link</button></form>
+        <span class="text-sm text-muted-foreground">the old link will stop working</span>
+      </div>
+      <dl class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <div><dt class="text-muted-foreground">Traffic</dt><dd class="text-lg font-semibold tabular-nums">{{bytes .UsedBytes}}</dd></div>
+        <div><dt class="text-muted-foreground">Limit</dt><dd class="text-lg font-semibold tabular-nums">{{if .TrafficLimitBytes}}{{bytes .TrafficLimitBytes}}{{else}}no limit{{end}}</dd></div>
+        <div><dt class="text-muted-foreground">↑ / ↓</dt><dd class="tabular-nums">{{bytes .UsedUpBytes}} / {{bytes .UsedDownBytes}}</dd></div>
+        <div><dt class="text-muted-foreground">Term</dt><dd class="font-semibold tabular-nums">{{date .ExpiresAt}}</dd></div>
+      </dl>
+      {{if .TrafficLimitBytes}}{{template "meter" percent .UsedBytes .TrafficLimitBytes}}{{end}}
+      <p class="text-sm text-muted-foreground">Created {{datetime .CreatedAt}}</p>
+    </section>
   </div>
 </div>
 
-<h2>Manage</h2>
 <div class="card">
-  <form method="post" action="{{base}}/users/{{.ID}}/extend" class="row">
-    <label>Extend by <input type="number" name="days" class="narrow" min="1" value="30" required> days</label>
-    <label><input type="checkbox" name="reset_traffic"> and reset traffic</label>
-    <button {{if not .ExpiresAt}}disabled title="user without expiry"{{end}}>Extend</button>
-  </form>
-  <form method="post" action="{{base}}/users/{{.ID}}/expiry" class="row">
-    <label>Term until <input type="date" name="expires" value="{{if .ExpiresAt}}{{date .ExpiresAt}}{{end}}"></label>
-    <button>Save</button><span class="muted">empty means no expiry</span>
-  </form>
-  <form method="post" action="{{base}}/users/{{.ID}}/limit" class="row">
-    <label>Limit <input type="number" name="limit_gb" class="narrow" min="0" step="any" value="{{if .TrafficLimitBytes}}{{gb .TrafficLimitBytes}}{{end}}"> GB</label>
-    <button>Save</button><span class="muted">empty or 0 means no limit</span>
-  </form>
-  <div class="row">
-    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/reset-traffic"><button>Reset traffic</button></form>
+  <header><h2>Manage</h2></header>
+  <section class="flex flex-col gap-4">
+    <form method="post" action="{{base}}/users/{{.ID}}/extend" class="flex flex-wrap items-end gap-3">
+      <div class="field">
+        <label for="extend-days">Extend by, days</label>
+        <input id="extend-days" type="number" name="days" class="w-28" min="1" value="30" required>
+      </div>
+      <label class="label h-9 gap-2"><input class="input" type="checkbox" name="reset_traffic"> and reset traffic</label>
+      <button class="btn" data-variant="secondary" {{if not .ExpiresAt}}disabled title="user without expiry"{{end}}>Extend</button>
+    </form>
+    <form method="post" action="{{base}}/users/{{.ID}}/expiry" class="flex flex-wrap items-end gap-3">
+      <div class="field">
+        <label for="expires">Term until</label>
+        <input id="expires" type="date" name="expires" value="{{if .ExpiresAt}}{{date .ExpiresAt}}{{end}}">
+      </div>
+      <button class="btn" data-variant="secondary">Save</button>
+      <span class="pb-2 text-sm text-muted-foreground">empty means no expiry</span>
+    </form>
+    <form method="post" action="{{base}}/users/{{.ID}}/limit" class="flex flex-wrap items-end gap-3">
+      <div class="field">
+        <label for="limit">Limit, GB</label>
+        <input id="limit" type="number" name="limit_gb" class="w-28" min="0" step="any" value="{{if .TrafficLimitBytes}}{{gb .TrafficLimitBytes}}{{end}}">
+      </div>
+      <button class="btn" data-variant="secondary">Save</button>
+      <span class="pb-2 text-sm text-muted-foreground">empty or 0 means no limit</span>
+    </form>
+  </section>
+  <footer class="flex flex-wrap gap-2 border-t">
+    <form method="post" action="{{base}}/users/{{.ID}}/reset-traffic"><button class="btn" data-variant="outline">Reset traffic</button></form>
     {{if .Enabled}}
-    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/disable"><button>Disable</button></form>
+    <form method="post" action="{{base}}/users/{{.ID}}/disable"><button class="btn" data-variant="outline">Disable</button></form>
     {{else}}
-    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/enable"><button>Enable</button></form>
+    <form method="post" action="{{base}}/users/{{.ID}}/enable"><button class="btn" data-variant="outline">Enable</button></form>
     {{end}}
-    <form class="inline" method="post" action="{{base}}/users/{{.ID}}/delete" hx-boost="true" hx-confirm="Delete {{.Name}}? The subscription will stop working."><button class="danger">Delete</button></form>
-  </div>
+    <form method="post" action="{{base}}/users/{{.ID}}/delete" hx-boost="true" hx-confirm="Delete {{.Name}}? The subscription will stop working."><button class="btn" data-variant="destructive">Delete</button></form>
+  </footer>
 </div>
 {{end}}
 
 {{if .Data.WGNodes}}
-<h2>WireGuard configs</h2>
 <div class="card">
-  <p class="muted">For clients without a subscription (the official WireGuard app).</p>
-  {{range .Data.WGNodes}}<a class="btn" href="{{base}}/users/{{$.Data.User.ID}}/wg/{{.ID}}">{{.Name}}.conf</a> {{end}}
+  <header>
+    <h2>WireGuard configs</h2>
+    <p>For clients without a subscription (the official WireGuard app).</p>
+  </header>
+  <section class="flex flex-wrap gap-2">
+    {{range .Data.WGNodes}}<a class="btn" data-variant="outline" href="{{base}}/users/{{$.Data.User.ID}}/wg/{{.ID}}">{{template "icon" "download"}}{{.Name}}.conf</a>{{end}}
+  </section>
 </div>
 {{end}}
 {{end}}

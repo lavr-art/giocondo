@@ -1,38 +1,80 @@
 {{define "content"}}
-<h1>Settings</h1>
-<h2>Subscriptions</h2>
-<div class="card">
-  <form method="post" action="{{base}}/settings" hx-boost="true">
-    <p><label>Profile name<br>
-      <input type="text" name="title" value="{{.Data.Title}}" required maxlength="128"></label></p>
-    <p class="muted">The profile name clients show. Overrides PANEL_SUB_TITLE.</p>
-    <p><label>Update interval, hours<br>
-      <input class="narrow" type="number" name="update_interval_hours" value="{{.Data.UpdateIntervalHours}}" required min="1" max="168"></label></p>
-    <p class="muted">How often clients should refresh the subscription.</p>
-    <p><label>Support link<br>
-      <input class="url" type="url" name="support_url" value="{{.Data.SupportURL}}" placeholder="https://t.me/your_support" maxlength="2048"></label></p>
-    <p><label>Profile page<br>
-      <input class="url" type="url" name="profile_page_url" value="{{.Data.ProfilePageURL}}" placeholder="https://example.com" maxlength="2048"></label></p>
-    <p><label>Announcement<br>
-      <input type="text" name="announce" value="{{.Data.Announce}}" maxlength="200"></label></p>
-    <p class="muted">Optional. Sent as the Support-Url, Profile-Web-Page-Url and Announce headers to everyone with a subscription; only some clients, such as Happ, show them. Leave a field empty to send nothing.</p>
-    <h3>Formats</h3>
-    <p class="row">
-      <label><input type="checkbox" name="singbox_enabled"{{if not .Data.SingBoxDisabled}} checked{{end}}> sing-box JSON</label>
-      <label><input type="checkbox" name="clash_enabled"{{if not .Data.ClashDisabled}} checked{{end}}> Mihomo YAML</label>
-    </p>
-    <p class="muted">Links are always on. A client detected by User-Agent gets links instead of a disabled format, and links carry no routing rules, except for Happ. A request with ?format= for a disabled format gets 404.</p>
-    <p><label>User-Agent rules, one client=format per line<br>
-      <textarea class="code" name="user_agent_rules" rows="4" cols="80" spellcheck="false" placeholder="MyClient=clash">{{.Data.UserAgentRulesText}}</textarea></label></p>
-    <p class="muted">The client is any part of the User-Agent, ignoring case; the format is links, singbox or clash. These rules go before the built-in ones, so they can change what a known client gets. A wrong format can leave a client without routing or unable to read the subscription.</p>
-    <h3>Mihomo routing</h3>
-    <p class="muted">Applies only to clients on Mihomo: FlClash, Clash Verge Rev and others. sing-box and Happ keep the built-in rules.</p>
-    <p><label><input type="checkbox" name="clash_routing_enabled"{{if .Data.ClashRoutingEnabled}} checked{{end}}> Use these rules</label></p>
-    <p><label>YAML with rules, rule-providers, dns or sniffer<br>
-      <textarea class="code" name="clash_routing_yaml" rows="14" cols="80" spellcheck="false">{{.Data.ClashRoutingYAML}}</textarea></label></p>
-    <p class="muted">Rules with MATCH replace the built-in ones, including the private network rules; rules without it go before them. Targets: proxy, auto, DIRECT, REJECT, REJECT-DROP, PASS. Built-in lists can be used by name: geosite-ru-blocked, geoip-ru-blocked, geosite-category-ru, geosite-ru-available-only-inside, geoip-ru.</p>
-    <p class="muted">Avoid GEOSITE and GEOIP: FlClash and Clash Verge Rev use their own geodata, and a category missing from it stops the profile. Use rule-providers instead. Saving does not run Mihomo, so check new rules on a client. Provider addresses are visible to clients.</p>
-    <p><button class="primary">Save</button></p>
-  </form>
+<div>
+  <h1 class="text-2xl font-semibold tracking-tight">Settings</h1>
+  <p class="text-sm text-muted-foreground">Subscription profile, formats and client routing.</p>
 </div>
+
+<form method="post" action="{{base}}/settings" hx-boost="true" class="flex flex-col gap-6">
+  <div class="card">
+    <header>
+      <h2>Profile</h2>
+      <p>What clients show for the subscription.</p>
+    </header>
+    <section class="grid gap-5">
+      <div class="grid gap-5 sm:grid-cols-[1fr_12rem]">
+        <div class="field">
+          <label for="title">Profile name</label>
+          <input id="title" type="text" name="title" value="{{.Data.Title}}" required maxlength="128">
+          <p>The profile name clients show. Overrides PANEL_SUB_TITLE.</p>
+        </div>
+        <div class="field">
+          <label for="update-interval">Update interval, hours</label>
+          <input id="update-interval" type="number" name="update_interval_hours" value="{{.Data.UpdateIntervalHours}}" required min="1" max="168">
+          <p>How often clients should refresh the subscription.</p>
+        </div>
+      </div>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div class="field">
+          <label for="support-url">Support link</label>
+          <input id="support-url" type="url" name="support_url" value="{{.Data.SupportURL}}" placeholder="https://t.me/your_support" maxlength="2048">
+        </div>
+        <div class="field">
+          <label for="profile-page-url">Profile page</label>
+          <input id="profile-page-url" type="url" name="profile_page_url" value="{{.Data.ProfilePageURL}}" placeholder="https://example.com" maxlength="2048">
+        </div>
+      </div>
+      <div class="field">
+        <label for="announce">Announcement</label>
+        <input id="announce" type="text" name="announce" value="{{.Data.Announce}}" maxlength="200">
+        <p>Optional. Sent as the Support-Url, Profile-Web-Page-Url and Announce headers to everyone with a subscription; only some clients, such as Happ, show them. Leave a field empty to send nothing.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="card">
+    <header>
+      <h2>Formats</h2>
+      <p>Links are always on. A client detected by User-Agent gets links instead of a disabled format, and links carry no routing rules, except for Happ. A request with ?format= for a disabled format gets 404.</p>
+    </header>
+    <section class="grid gap-5">
+      <div class="flex flex-wrap gap-6">
+        <label class="label gap-2"><input class="input" type="checkbox" role="switch" name="singbox_enabled"{{if not .Data.SingBoxDisabled}} checked{{end}}> sing-box JSON</label>
+        <label class="label gap-2"><input class="input" type="checkbox" role="switch" name="clash_enabled"{{if not .Data.ClashDisabled}} checked{{end}}> Mihomo YAML</label>
+      </div>
+      <div class="field">
+        <label for="ua-rules">User-Agent rules, one client=format per line</label>
+        <textarea id="ua-rules" class="font-mono text-xs" name="user_agent_rules" rows="4" spellcheck="false" placeholder="MyClient=clash">{{.Data.UserAgentRulesText}}</textarea>
+        <p>The client is any part of the User-Agent, ignoring case; the format is links, singbox or clash. These rules go before the built-in ones, so they can change what a known client gets. A wrong format can leave a client without routing or unable to read the subscription.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="card">
+    <header>
+      <h2>Mihomo routing</h2>
+      <p>Applies only to clients on Mihomo: FlClash, Clash Verge Rev and others. sing-box and Happ keep the built-in rules.</p>
+    </header>
+    <section class="grid gap-5">
+      <label class="label gap-2"><input class="input" type="checkbox" role="switch" name="clash_routing_enabled"{{if .Data.ClashRoutingEnabled}} checked{{end}}> Use these rules</label>
+      <div class="field">
+        <label for="clash-routing">YAML with rules, rule-providers, dns or sniffer</label>
+        <textarea id="clash-routing" class="min-h-80 font-mono text-xs" name="clash_routing_yaml" rows="14" spellcheck="false">{{.Data.ClashRoutingYAML}}</textarea>
+        <p>Rules with MATCH replace the built-in ones, including the private network rules; rules without it go before them. Targets: proxy, auto, DIRECT, REJECT, REJECT-DROP, PASS. Built-in lists can be used by name: geosite-ru-blocked, geoip-ru-blocked, geosite-category-ru, geosite-ru-available-only-inside, geoip-ru.</p>
+        <p>Avoid GEOSITE and GEOIP: FlClash and Clash Verge Rev use their own geodata, and a category missing from it stops the profile. Use rule-providers instead. Saving does not run Mihomo, so check new rules on a client. Provider addresses are visible to clients.</p>
+      </div>
+    </section>
+  </div>
+
+  <div><button class="btn">Save</button></div>
+</form>
 {{end}}

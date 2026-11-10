@@ -177,7 +177,7 @@ func (h *Handler) loginPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.sess.valid(r) {
-		h.redirect(w, r, "/users")
+		h.redirect(w, r, "/")
 
 		return
 	}
@@ -188,7 +188,7 @@ func (h *Handler) loginPage(w http.ResponseWriter, r *http.Request) {
 // safeNext allows only local paths so ?next= cannot lead to another site.
 func safeNext(next string) string {
 	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.Contains(next, "\\") {
-		return "/users"
+		return "/"
 	}
 
 	return next

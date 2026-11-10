@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
 <title>{{.Title}} · giocondo-vpn</title>
-<link rel="stylesheet" href="{{base}}/static/app.css">
-<script src="{{base}}/static/theme.js"></script>
-<script src="{{base}}/static/htmx.min.js" defer></script>
-<script src="{{base}}/static/basecoat.min.js" defer></script>
-<script src="{{base}}/static/app.js" defer></script>
+<link rel="stylesheet" href="{{asset "app.css"}}">
+<script src="{{asset "theme.js"}}"></script>
+<script src="{{asset "htmx.min.js"}}" defer></script>
+<script src="{{asset "basecoat.min.js"}}" defer></script>
+{{block "scripts" .}}{{end}}
+<script src="{{asset "app.js"}}" defer></script>
 </head>
 <body class="bg-background text-foreground antialiased">
 {{if .Authed}}
 <aside class="sidebar" data-side="left" aria-hidden="false">
   <nav aria-label="Main navigation">
     <header class="px-4 py-4">
-      <a href="{{base}}/users" class="flex items-center gap-2 font-semibold">
+      <a href="{{base}}/" class="flex items-center gap-2 font-semibold">
         <span class="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">{{template "icon" "shield"}}</span>
         giocondo-vpn
       </a>
@@ -24,6 +25,7 @@
     <section class="px-2" hx-boost="true">
       <div role="group">
         <ul class="gap-1">
+          <li><a href="{{base}}/" hx-boost="false"{{if eq .Nav "dashboard"}} aria-current="page"{{end}}>{{template "icon" "dashboard"}}<span>Overview</span></a></li>
           <li><a href="{{base}}/users"{{if eq .Nav "users"}} aria-current="page"{{end}}>{{template "icon" "users"}}<span>Users</span></a></li>
           <li><a href="{{base}}/nodes"{{if eq .Nav "nodes"}} aria-current="page"{{end}}>{{template "icon" "server"}}<span>Nodes</span></a></li>
           <li><a href="{{base}}/tokens"{{if eq .Nav "tokens"}} aria-current="page"{{end}}>{{template "icon" "key"}}<span>API tokens</span></a></li>
@@ -57,7 +59,7 @@
 </main>
 <div id="toaster" class="toaster">
   {{if .Flash}}<div class="toast" role="status" aria-atomic="true" aria-hidden="false" data-category="success">
-    <div class="toast-content"><svg aria-hidden="true"><use href="{{base}}/static/icons.svg#circle-check"/></svg><section><h2>{{.Flash}}</h2></section></div>
+    <div class="toast-content"><svg aria-hidden="true"><use href="{{asset "icons.svg"}}#circle-check"/></svg><section><h2>{{.Flash}}</h2></section></div>
   </div>{{end}}
 </div>
 </body>

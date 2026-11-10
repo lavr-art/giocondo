@@ -27,8 +27,24 @@ document.body.addEventListener("click", function (e) {
   }
 });
 
+// Charts take their data from data-chart-* attributes; Chart.js is loaded only on pages that have them.
+function initCharts() {
+  if (!window.basecoat || !window.basecoat.chart) return;
+  // Thin out day labels instead of tilting them; scale defaults merge with Basecoat's tick colors.
+  window.Chart.defaults.scale.ticks.maxRotation = 0;
+  window.Chart.defaults.scale.ticks.autoSkipPadding = 16;
+  document.querySelectorAll("canvas[data-chart-type]").forEach(function (canvas) {
+    var stacked = canvas.dataset.chartStacked === "true";
+    window.basecoat.chart(canvas, { options: { scales: { x: { stacked: stacked }, y: { stacked: stacked } } } });
+  });
+}
+document.addEventListener("DOMContentLoaded", initCharts);
+
 // A restored history snapshot keeps stale component state: reinitialize it.
-document.body.addEventListener("htmx:historyRestore", function () { window.basecoat.initAll({ force: true }); });
+document.body.addEventListener("htmx:historyRestore", function () {
+  window.basecoat.initAll({ force: true });
+  initCharts();
+});
 
 // Forms inside a tab post to an action with #<tab>; the browser keeps the fragment across the redirect
 // back to the page, so the same tab opens again. Basecoat initializes tabs on DOMContentLoaded first.

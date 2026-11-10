@@ -1,0 +1,121 @@
+{{define "scripts"}}<script src="{{asset "charts.min.js"}}" defer></script>{{end}}
+
+{{define "content"}}
+{{with .Data}}
+<div>
+  <h1 class="text-2xl font-semibold tracking-tight">Overview</h1>
+  <p class="text-sm text-muted-foreground">Users, nodes and traffic over the last 30 days.</p>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <a class="card gap-2 transition-colors hover:bg-muted/50" href="{{base}}/users">
+    <header class="flex items-center justify-between text-sm text-muted-foreground">Users {{template "icon" "users"}}</header>
+    <section>
+      <p class="text-3xl font-semibold tabular-nums">{{.Users.Active}}<span class="text-base font-normal text-muted-foreground"> / {{.Users.Total}}</span></p>
+      <p class="text-sm text-muted-foreground">active{{if .Users.Limited}} · {{.Users.Limited}} out of traffic{{end}}{{if .Users.Expired}} · {{.Users.Expired}} expired{{end}}</p>
+    </section>
+  </a>
+  <a class="card gap-2 transition-colors hover:bg-muted/50" href="{{base}}/nodes">
+    <header class="flex items-center justify-between text-sm text-muted-foreground">Nodes {{template "icon" "server"}}</header>
+    <section>
+      <p class="text-3xl font-semibold tabular-nums">{{.Nodes.Online}}<span class="text-base font-normal text-muted-foreground"> / {{.Nodes.Total}}</span></p>
+      <p class="text-sm text-muted-foreground">online{{if .Nodes.Disabled}} · {{.Nodes.Disabled}} disabled{{end}}</p>
+    </section>
+  </a>
+  <div class="card gap-2">
+    <header class="flex items-center justify-between text-sm text-muted-foreground">Today {{template "icon" "activity"}}</header>
+    <section>
+      <p class="text-3xl font-semibold tabular-nums">{{bytes .Today.Total}}</p>
+      <p class="text-sm text-muted-foreground tabular-nums">↓ {{bytes .Today.Down}} · ↑ {{bytes .Today.Up}}</p>
+    </section>
+  </div>
+  <div class="card gap-2">
+    <header class="flex items-center justify-between text-sm text-muted-foreground">30 days {{template "icon" "calendar"}}</header>
+    <section>
+      <p class="text-3xl font-semibold tabular-nums">{{bytes .Period.Total}}</p>
+      <p class="text-sm text-muted-foreground tabular-nums">↓ {{bytes .Period.Down}} · ↑ {{bytes .Period.Up}}</p>
+    </section>
+  </div>
+</div>
+
+<div class="card">
+  <header>
+    <h2>Traffic</h2>
+    <p>All users and nodes per day, in {{.ChartUnit}}.</p>
+  </header>
+  <section>
+    <canvas class="h-64" data-chart-type="bar" data-chart-stacked="true" data-chart-legend="true"
+            data-chart-data="{{.ChartData}}" data-chart-series="{{.ChartSeries}}" aria-label="Daily traffic chart" role="img"></canvas>
+  </section>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <div class="card">
+    <header>
+      <h2>Needs attention</h2>
+      <p>Users near or past their limit or term, nodes that are offline or failing.</p>
+    </header>
+    <section>
+      {{if or .AttentionUsers .AttentionNodes}}
+      <ul class="flex flex-col divide-y">
+        {{range .AttentionNodes}}
+        <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+          <a class="flex items-center gap-2 font-medium hover:underline" href="{{base}}/nodes/{{.ID}}">{{template "icon" "server"}}{{.Name}}</a>
+          <div class="flex flex-wrap gap-1">{{template "status_badge" .Status}}{{if .ApplyError}}{{template "error_badge" "config error"}}{{end}}{{if .Warning}}{{template "error_badge" "port unreachable"}}{{end}}</div>
+        </li>
+        {{end}}
+        {{range .AttentionUsers}}
+        <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+          <a class="flex items-center gap-2 font-medium hover:underline" href="{{base}}/users/{{.ID}}">{{template "icon" "users"}}{{.Name}}</a>
+          <div class="flex flex-wrap gap-1">{{template "status_badge" .Status}}{{if .TrafficWarning}}{{template "warn_badge" "80%"}}{{end}}{{if .ExpiresSoon}}{{template "warn_badge" (printf "until %s" (date .ExpiresAt))}}{{end}}</div>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="text-sm text-muted-foreground">Everything is fine.</p>
+      {{end}}
+    </section>
+  </div>
+
+  <div class="card">
+    <header>
+      <h2>Top users</h2>
+      <p>By traffic over the last 30 days.</p>
+    </header>
+    <section>
+      {{if .TopUsers}}
+      <ul class="flex flex-col gap-3">
+        {{$top := (index .TopUsers 0).Total}}
+        {{range .TopUsers}}
+        <li class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between text-sm">
+            <a class="font-medium hover:underline" href="{{base}}/users/{{.ID}}">{{.Name}}</a>
+            <span class="tabular-nums text-muted-foreground">{{bytes .Total}}</span>
+          </div>
+          {{template "meter_wide" percent .Total $top}}
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="text-sm text-muted-foreground">No traffic yet.</p>
+      {{end}}
+    </section>
+    {{if .NodeTraffic}}
+    <footer class="flex-col items-stretch gap-3 border-t">
+      <h3 class="text-sm font-medium">By node</h3>
+      {{$top := (index .NodeTraffic 0).Total}}
+      {{range .NodeTraffic}}
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between text-sm">
+          <a class="hover:underline" href="{{base}}/nodes/{{.ID}}">{{.Name}}</a>
+          <span class="tabular-nums text-muted-foreground">{{bytes .Total}}</span>
+        </div>
+        {{template "meter_wide" percent .Total $top}}
+      </div>
+      {{end}}
+    </footer>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{end}}

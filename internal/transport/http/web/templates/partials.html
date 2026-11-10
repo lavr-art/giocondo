@@ -1,4 +1,4 @@
-{{define "icon"}}<svg aria-hidden="true" class="size-4 shrink-0"><use href="{{base}}/static/icons.svg#{{.}}"/></svg>{{end}}
+{{define "icon"}}<svg aria-hidden="true" class="size-4 shrink-0"><use href="{{asset "icons.svg"}}#{{.}}"/></svg>{{end}}
 
 {{define "status_badge"}}<span class="badge" data-variant="outline"><span class="size-1.5 rounded-full {{if or (eq . "active") (eq . "online")}}bg-emerald-500{{else if or (eq . "expired") (eq . "disabled") (eq . "offline")}}bg-red-500{{else}}bg-amber-500{{end}}"></span>{{status .}}</span>{{end}}
 
@@ -40,3 +40,5 @@
 {{end}}
 
 {{define "meter"}}<progress class="h-1.5 w-32 appearance-none overflow-hidden rounded-full bg-primary/15 [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-primary" max="100" value="{{.}}"></progress>{{end}}
+
+{{define "meter_wide"}}<progress class="h-1.5 w-full appearance-none overflow-hidden rounded-full bg-primary/15 [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-primary" max="100" value="{{.}}"></progress>{{end}}

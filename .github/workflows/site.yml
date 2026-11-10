@@ -1,0 +1,38 @@
+# Publishes the project landing page and crawler files from deploy/site to the gh-pages branch without a release.
+# The release workflow copies the same files, so both keep the page current; the apt repository is not touched.
+name: site
+
+on:
+  push:
+    branches: [main]
+    paths: ["deploy/site/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: gh-pages
+    steps:
+      - uses: actions/checkout@v5
+      - name: checkout gh-pages
+        run: |
+          git fetch origin gh-pages
+          git worktree add site origin/gh-pages && git -C site switch -C gh-pages
+      - run: cp deploy/site/* site/
+      - name: publish
+        working-directory: site
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "site is up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "site: ${GITHUB_SHA::7}"
+          git push origin gh-pages

@@ -4,7 +4,10 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26%2B-00ADD8.svg)](go.mod)
 
-A self-hosted control panel for personal [sing-box](https://sing-box.sagernet.org/) VPN nodes.
+**English** · [Русский](README.ru.md)
+
+A self-hosted VPN panel for [sing-box](https://sing-box.sagernet.org/) nodes with VLESS Reality, Hysteria2 and
+WireGuard: a lightweight alternative to Hiddify Manager, Marzban and 3x-ui for personal and small-group use.
 
 The panel stores all state: users, subscription terms, traffic limits, protocol credentials, nodes and traffic history.
 A small agent on every node receives its config from the panel and manages sing-box through an engine
@@ -283,6 +286,29 @@ apt repository on GitHub Pages. See [docs/release.md](docs/release.md).
 
 giocondo-vpn is built for personal and small-group use. Not implemented: PostgreSQL, creating VMs through
 cloud provider APIs, a Telegram bot, AmneziaWG.
+
+## FAQ
+
+**Which VPN clients are supported?**
+Any client that imports a subscription link: Hiddify, Happ, v2rayNG, Karing, sing-box (1.12+),
+and Mihomo/Clash clients such as FlClash and Clash Verge Rev. WireGuard users can also use the native WireGuard app.
+
+**How is it different from Hiddify Manager, Marzban or 3x-ui?**
+giocondo-vpn runs only sing-box, keeps all state in the panel's SQLite database and talks to nodes through an
+agent that connects to the panel over mTLS, so nodes expose no management port. It is a single Go binary per role,
+installed from deb packages, and targets a 1 CPU / 1 GB node.
+
+**Can I migrate from Hiddify Manager?**
+There is no automatic import. Install the panel, add your nodes and recreate the users; each user gets a new
+subscription link.
+
+**Does it work with several servers?**
+Yes. One panel manages any number of nodes; every user's subscription includes all enabled nodes.
+See [Adding more nodes](#adding-more-nodes).
+
+**Is traffic routed for Russia?**
+Yes: client profiles send Russian zones and services direct and blocked resources through the VPN,
+see [Features](#features).
 
 ## Contributing
 

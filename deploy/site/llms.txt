@@ -1,0 +1,21 @@
+# giocondo-vpn
+
+> Self-hosted VPN control panel for sing-box nodes with VLESS Reality, Hysteria2 and WireGuard. A lightweight alternative to Hiddify Manager, Marzban and 3x-ui for personal and small-group use. Written in Go, stores state in SQLite, installs from signed deb packages on Debian/Ubuntu (amd64, arm64). License: GPL-3.0.
+
+The panel stores users, subscription terms, traffic limits, protocol keys, nodes and traffic history. An agent on every node connects to the panel over gRPC with mTLS, so nodes expose no management port. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box (1.12+) and Mihomo/Clash clients. Client profiles route Russian zones direct and blocked resources through the VPN. There is no automatic import from Hiddify Manager.
+
+Install the panel and a local node on a clean server: `bash <(curl -fsSL https://lavr-art.github.io/giocondo/install.sh)`
+
+## Docs
+
+- [README](https://github.com/lavr-art/giocondo/blob/main/README.md): features, quick start, configuration, subscriptions, FAQ
+- [README (Russian)](https://github.com/lavr-art/giocondo/blob/main/README.ru.md)
+- [Architecture](https://github.com/lavr-art/giocondo/blob/main/docs/architecture.md)
+- [REST API (OpenAPI)](https://github.com/lavr-art/giocondo/blob/main/docs/api.yaml)
+- [Releases and apt repository](https://github.com/lavr-art/giocondo/blob/main/docs/release.md)
+- [Upgrades and recovery](https://github.com/lavr-art/giocondo/blob/main/docs/upgrades.md)
+
+## Source
+
+- [GitHub repository](https://github.com/lavr-art/giocondo)
+- [Releases](https://github.com/lavr-art/giocondo/releases)

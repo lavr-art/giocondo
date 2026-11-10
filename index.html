@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>giocondo-vpn: self-hosted sing-box VPN panel</title>
+<meta name="description" content="Self-hosted VPN panel for sing-box nodes with VLESS Reality, Hysteria2 and WireGuard. A lightweight Hiddify Manager alternative with subscriptions for Hiddify, Happ, v2rayNG, Karing and Clash/Mihomo clients.">
+<link rel="canonical" href="https://lavr-art.github.io/giocondo/">
+<link rel="alternate" hreflang="en" href="https://lavr-art.github.io/giocondo/#en">
+<link rel="alternate" hreflang="ru" href="https://lavr-art.github.io/giocondo/#ru">
+<meta property="og:type" content="website">
+<meta property="og:title" content="giocondo-vpn: self-hosted sing-box VPN panel">
+<meta property="og:description" content="VLESS Reality, Hysteria2 and WireGuard nodes managed from one panel. One subscription link for Hiddify, Happ, v2rayNG, Karing and Clash/Mihomo.">
+<meta property="og:url" content="https://lavr-art.github.io/giocondo/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "giocondo-vpn",
+  "description": "Self-hosted VPN control panel for sing-box nodes with VLESS Reality, Hysteria2 and WireGuard, an alternative to Hiddify Manager.",
+  "applicationCategory": "NetworkingApplication",
+  "operatingSystem": "Debian, Ubuntu (amd64, arm64)",
+  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+  "url": "https://lavr-art.github.io/giocondo/",
+  "codeRepository": "https://github.com/lavr-art/giocondo",
+  "programmingLanguage": "Go",
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+}
+</script>
+<style>
+:root { --bg: #ffffff; --fg: #1a1a1a; --muted: #5c5c5c; --code: #f3f3f3; --link: #0b57d0; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121212; --fg: #e8e8e8; --muted: #a0a0a0; --code: #1f1f1f; --link: #8ab4f8; }
+}
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 2rem; margin: 0 0 8px; }
+h2 { margin-top: 40px; }
+p.lead { color: var(--muted); font-size: 1.1rem; }
+a { color: var(--link); }
+pre { background: var(--code); padding: 12px; overflow-x: auto; border-radius: 6px; }
+code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+nav a { margin-right: 16px; }
+</style>
+</head>
+<body>
+<main>
+<nav><a href="https://github.com/lavr-art/giocondo">GitHub</a><a href="https://github.com/lavr-art/giocondo/releases">Releases</a><a href="#ru">Русский</a></nav>
+
+<section id="en" lang="en">
+<h1>giocondo-vpn</h1>
+<p class="lead">A self-hosted VPN panel for sing-box nodes with VLESS Reality, Hysteria2 and WireGuard:
+a lightweight alternative to Hiddify Manager, Marzban and 3x-ui for personal and small-group use.</p>
+
+<p>The panel stores users, subscription terms, traffic limits, protocol keys, nodes and traffic history.
+A small agent on every node receives its config over an outbound gRPC stream with mTLS, so nodes expose no
+management port. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Karing, sing-box and
+Mihomo/Clash clients (FlClash, Clash Verge Rev).</p>
+
+<h2>Features</h2>
+<ul>
+<li>VLESS Reality, Hysteria2 and WireGuard on sing-box</li>
+<li>Validated, atomic config rollout with rollback</li>
+<li>Per-user traffic accounting, terms, limits and extensions</li>
+<li>Subscriptions as base64 links, sing-box JSON or Mihomo YAML</li>
+<li>Routing for Russia: Russian zones direct, blocked resources through the VPN</li>
+<li>Web UI and OpenAPI REST API with scoped tokens</li>
+<li>Node installation over SSH or cloud-init, optional Cloudflare DNS</li>
+<li>Single Go binary, SQLite, signed deb packages for amd64 and arm64</li>
+</ul>
+
+<h2>Install</h2>
+<p>On a clean Debian 11+ or Ubuntu 22.04+ server, as root:</p>
+<pre><code>bash &lt;(curl -fsSL https://lavr-art.github.io/giocondo/install.sh)</code></pre>
+<p>Options, domains and more nodes: see the <a href="https://github.com/lavr-art/giocondo#quick-start">README</a>.</p>
+</section>
+
+<section id="ru" lang="ru">
+<h2>giocondo-vpn по-русски</h2>
+<p>Self-hosted панель управления VPN-серверами на sing-box с VLESS Reality, Hysteria2 и WireGuard —
+лёгкая альтернатива Hiddify Manager, Marzban и 3x-ui. Одна ссылка подписки для Hiddify, Happ, v2rayNG, Karing
+и клиентов Mihomo/Clash, маршрутизация для России, учёт трафика, сроки и лимиты пользователей.</p>
+<p>Установка на чистый сервер Debian/Ubuntu одной командой:</p>
+<pre><code>bash &lt;(curl -fsSL https://lavr-art.github.io/giocondo/install.sh)</code></pre>
+<p>Подробнее: <a href="https://github.com/lavr-art/giocondo/blob/main/README.ru.md">README на русском</a>.</p>
+</section>
+</main>
+</body>
+</html>

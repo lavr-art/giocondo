@@ -1,0 +1,7 @@
+/* Source of static/app.css, built by `make css` with the standalone Tailwind CLI.
+   basecoat.bundle.css is Basecoat v1.1.0 (MIT, see basecoat.LICENSE.md); static/basecoat.min.js is the
+   matching runtime with the sidebar, toast and tabs components. Update both from the same release. */
+@import "tailwindcss" source(none);
+@source "../templates";
+@source "../static/app.js";
+@import "./basecoat.bundle.css";

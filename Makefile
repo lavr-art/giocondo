@@ -20,7 +20,7 @@ GOOS     ?= $(HOSTOS)
 GOARCH   ?= $(HOSTARCH)
 LINT_CONFIG ?= .golangci.yml
 
-.PHONY: all build test lint proto clean sing-box agent deb
+.PHONY: all build test lint proto clean sing-box agent deb css
 
 all: build
 
@@ -42,6 +42,29 @@ test:
 
 lint:
 	golangci-lint run --config $(LINT_CONFIG) ./...
+
+# Web UI stylesheet: the standalone Tailwind CLI (no Node) compiles Basecoat and the utilities used by the
+# templates into a committed static/app.css, so a plain go build needs no frontend tooling. CI checks that
+# the committed file is current. The checksums are from the release sha256sums.txt.
+TAILWIND_VERSION := v4.3.1
+TAILWIND         := $(BIN)/tailwindcss-$(TAILWIND_VERSION)
+WEB_DIR          := internal/transport/http/web
+TAILWIND_ASSET_darwin_arm64 := macos-arm64 a27c43626185953ee19bdace1939c7601e55da654e0b2fc4461e3e29957aa739
+TAILWIND_ASSET_darwin_amd64 := macos-x64 e9e830ceb3e70b7e0775a3dd79eee8ec82c6b31270f08f2fa2857d0077045ac3
+TAILWIND_ASSET_linux_arm64  := linux-arm64 3d662377a86d71c43b549dc06b90db4586b4acd412bf827a3268e951661e5adf
+TAILWIND_ASSET_linux_amd64  := linux-x64 2526d063ba03b71f9a3ea7d5cee14f0aec147f117f222d5adc97b1d736d45999
+TAILWIND_ASSET := $(TAILWIND_ASSET_$(HOSTOS)_$(HOSTARCH))
+
+$(TAILWIND):
+	@test -n "$(TAILWIND_ASSET)" || { echo "no Tailwind CLI for $(HOSTOS)/$(HOSTARCH)"; exit 1; }
+	@mkdir -p $(BIN)
+	@set -e; set -- $(TAILWIND_ASSET); \
+	curl -fsSL -o $@.tmp https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-$$1; \
+	echo "$$2  $@.tmp" | shasum -a 256 -c - >/dev/null; \
+	chmod +x $@.tmp && mv $@.tmp $@
+
+css: $(TAILWIND)
+	$(TAILWIND) -i $(WEB_DIR)/assets/input.css -o $(WEB_DIR)/static/app.css --minify
 
 # protoc: pip install grpcio-tools (python3 -m grpc_tools.protoc) or the system protoc;
 # plugins: go install google.golang.org/protobuf/cmd/protoc-gen-go google.golang.org/grpc/cmd/protoc-gen-go-grpc

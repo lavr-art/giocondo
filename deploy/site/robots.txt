@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /pool/
+Disallow: /dists/
+
+Sitemap: https://lavr-art.github.io/giocondo/sitemap.xml

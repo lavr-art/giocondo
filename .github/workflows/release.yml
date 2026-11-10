@@ -130,6 +130,7 @@ jobs:
       - run: sudo apt-get install -y --no-install-recommends apt-utils
       - run: deploy/apt/update-repo.sh site "$KEY_ID" debs/*.deb
       - run: cp install.sh site/install.sh
+      - run: cp deploy/site/* site/
       - name: publish
         working-directory: site
         run: |

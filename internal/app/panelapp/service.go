@@ -2,6 +2,7 @@ package panelapp
 
 import (
 	"github.com/artemlavr/giocondo/internal/model/panel"
+	"github.com/artemlavr/giocondo/internal/service/dashboard"
 	"github.com/artemlavr/giocondo/internal/service/healthcheck"
 	"github.com/artemlavr/giocondo/internal/service/hosts"
 	"github.com/artemlavr/giocondo/internal/service/network"
@@ -70,6 +71,15 @@ func (a *App) SettingsService() *settings.Service {
 	})
 
 	return a.settings
+}
+
+// DashboardService returns the dashboard service.
+func (a *App) DashboardService() *dashboard.Service {
+	a.serviceOnce.dashboard.Do(func() {
+		a.dashboard = dashboard.New(a.hooksForServices, a.repositories().Traffic, a.UserService(), a.NodeQueries())
+	})
+
+	return a.dashboard
 }
 
 // NodeQueries returns node queries.

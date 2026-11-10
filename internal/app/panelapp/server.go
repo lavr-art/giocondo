@@ -154,6 +154,7 @@ func (a *App) adminHTTP() (http.Handler, error) {
 				Provisioning: a.ProvisioningService(),
 				Network:      a.NetworkService(),
 				Settings:     a.SettingsService(),
+				Dashboard:    a.DashboardService(),
 			},
 			Password:      a.cfg.Password,
 			SessionSecret: a.cfg.SessionSecret,

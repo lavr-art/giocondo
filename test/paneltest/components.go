@@ -3,6 +3,7 @@ package paneltest
 
 import (
 	"github.com/artemlavr/giocondo/internal/app/panelapp"
+	"github.com/artemlavr/giocondo/internal/service/dashboard"
 	"github.com/artemlavr/giocondo/internal/service/healthcheck"
 	"github.com/artemlavr/giocondo/internal/service/hosts"
 	"github.com/artemlavr/giocondo/internal/service/network"
@@ -38,13 +39,14 @@ type Components struct {
 	Network      *network.Service
 	Health       *healthcheck.Service
 	Watcher      *watcher.Service
+	Dashboard    *dashboard.Service
 }
 
 // New builds the application services around d; d.DB is required and stays owned by the caller.
 func New(cfg Config, d Dependencies) *Components {
 	a := panelapp.New(cfg, d)
 
-	return &Components{App: a, Users: a.UserService(), Tokens: a.TokenService(), Queries: a.NodeQueries(), Nodes: a.NodeService(), Hosts: a.HostService(), Settings: a.SettingsService(), Credentials: a.CredentialCoordinator(), Provisioning: a.ProvisioningService(), Network: a.NetworkService(), Health: a.HealthcheckService(), Watcher: a.WatcherService()}
+	return &Components{App: a, Users: a.UserService(), Tokens: a.TokenService(), Queries: a.NodeQueries(), Nodes: a.NodeService(), Hosts: a.HostService(), Settings: a.SettingsService(), Credentials: a.CredentialCoordinator(), Provisioning: a.ProvisioningService(), Network: a.NetworkService(), Health: a.HealthcheckService(), Watcher: a.WatcherService(), Dashboard: a.DashboardService()}
 }
 
 // Close releases resources.

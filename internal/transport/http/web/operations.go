@@ -71,6 +71,11 @@ type Queries interface {
 	ListNodes(ctx context.Context) ([]panel.NodeView, error)
 }
 
+// Dashboard provides the home page overview.
+type Dashboard interface {
+	Overview(ctx context.Context) (panel.Dashboard, error)
+}
+
 // Dependencies lists the collaborators required by a component.
 type Dependencies struct {
 	Network      Network
@@ -81,4 +86,5 @@ type Dependencies struct {
 	Users        Users
 	Queries      Queries
 	Settings     Settings
+	Dashboard    Dashboard
 }

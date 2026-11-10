@@ -12,6 +12,7 @@ import (
 
 	"github.com/artemlavr/giocondo/internal/model/panel"
 	"github.com/artemlavr/giocondo/internal/repository/sqlite"
+	"github.com/artemlavr/giocondo/internal/service/dashboard"
 	"github.com/artemlavr/giocondo/internal/service/healthcheck"
 	"github.com/artemlavr/giocondo/internal/service/hosts"
 	"github.com/artemlavr/giocondo/internal/service/network"
@@ -72,6 +73,7 @@ type App struct {
 	users                    *users.Service
 	tokens                   *tokens.Service
 	watcher                  *watcher.Service
+	dashboard                *dashboard.Service
 	serviceOnce              struct {
 		credentials  sync.Once
 		hosts        sync.Once
@@ -86,6 +88,7 @@ type App struct {
 		users        sync.Once
 		tokens       sync.Once
 		watcher      sync.Once
+		dashboard    sync.Once
 	}
 }
 

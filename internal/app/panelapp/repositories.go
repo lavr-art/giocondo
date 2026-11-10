@@ -15,6 +15,7 @@ import (
 	tokenrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/tokens"
 	trafficrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/traffic"
 	userrepo "github.com/artemlavr/giocondo/internal/repository/sqlite/users"
+	"github.com/artemlavr/giocondo/internal/service/dashboard"
 	"github.com/artemlavr/giocondo/internal/service/healthcheck"
 	"github.com/artemlavr/giocondo/internal/service/hosts"
 	"github.com/artemlavr/giocondo/internal/service/network"
@@ -102,6 +103,7 @@ type NetworkRepository interface {
 // TrafficRepository records traffic.
 type TrafficRepository interface {
 	nodestate.TrafficRepository
+	dashboard.TrafficRepository
 }
 
 // ProbeRepository stores node probe results.

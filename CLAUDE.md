@@ -15,8 +15,11 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
   module `github.com/artemlavr/giocondo`. HTTP is the standard `net/http`.
 - Database: SQLite via `modernc.org/sqlite`, no CGO. PostgreSQL is not implemented yet;
   keep SQL portable, but do not assume support for another dialect.
-- Web: `html/template` + htmx, templates and static files embedded via `embed`.
-  There is no SPA, React, npm build or separate frontend module.
+- Web: `html/template` + htmx + Basecoat UI (shadcn components for plain HTML), templates and static
+  files embedded via `embed`. `static/app.css` is compiled from
+  `internal/transport/http/web/assets/input.css` by the standalone
+  Tailwind CLI (`make css`) and committed; CI checks it is current. Run `make css` after changing classes
+  in templates or `app.js`. There is no SPA, React, npm build or separate frontend module.
 - Nodes: sing-box only; VLESS Reality, Hysteria2, WireGuard.
   The core version is pinned in `build/sing-box/go.mod`, separately from the root module.
 - Link: an outbound gRPC `Sync` stream from the agent with mTLS and a private CA.
@@ -33,7 +36,7 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
 | `internal/service/` | Business operations, validation and consumer-owned dependency interfaces |
 | `internal/worker/` | Background schedules/queues: `watchsched`, `healthsched`, `events`, `reconciliation`, `tasks`; on the agent the engine apply queue (`enginequeue`), host network queue (`netqueue`) and the Sync loop (`panelsync`) |
 | `internal/transport/http/api/` | REST adapter with domain-specific service interfaces, route registry and token scopes |
-| `internal/transport/http/web/` | Web adapter with domain-specific service interfaces, sessions, templates, `static/app.js`, `static/style.css` |
+| `internal/transport/http/web/` | Web adapter with domain-specific service interfaces, sessions, templates, `static/` (compiled `app.css`, vendored Basecoat JS, `app.js`), `assets/` (stylesheet sources) |
 | `internal/model/panel/`, `internal/model/protocol/` | Entities, access policy, protocol parameter models, protocol keys and UUIDs |
 | `internal/repository/sqlite/` | Database open, migration runner and shared helpers (`DB.InTx`, `MapErr`, `Time`); a package per domain beneath it (`users`, `tokens`, `nodes`, `network`, `traffic`, `probes`, `hosts`, `settings`): `repository.go` with the struct and constructor, one file per query |
 | `migrations/` | SQL schema migrations `NNNN_*.sql`, embedded by `migrations.FS` |
@@ -221,6 +224,8 @@ the WG endpoint has no regular per-user counters.
   Do not disable these checks to simplify a handler or a test.
 - CSP forbids inline JS and inline CSS, including `style=`. Use the existing
   static files and classes; htmx is already in `internal/transport/http/web/static/`.
+  Dialogs, copy buttons, the sidebar and theme toggles are wired by `data-*` attributes in `app.js`,
+  not by the `onclick` attributes the Basecoat examples use.
   htmx action errors are passed through `HX-Trigger` / `showError`.
 - Background changes keep notifications and `Kick` when the active set changes.
   `internal/worker/events` owns in-memory queue execution and retry scheduling;

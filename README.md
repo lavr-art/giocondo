@@ -35,8 +35,9 @@ driver. Users get one subscription link that works in Hiddify, Happ, v2rayNG, Ka
   FlClash or Clash Verge Rev), Happ in the `routing` response header. Mihomo rules can be changed on the Settings page.
   Hiddify and other link-based clients configure routing themselves, and native WireGuard configs send all traffic
   through the VPN.
-- **Web UI and REST API**: `html/template` + htmx with a strict CSP, a secret admin path, and an OpenAPI-described
-  API with scoped tokens.
+- **Web UI and REST API**: server-rendered `html/template` + htmx with [Basecoat](https://basecoatui.com/) components,
+  a strict CSP and a secret admin path. The Overview page shows daily traffic, users near or past their limit
+  or term, failing nodes and top users over 30 days. An OpenAPI-described REST API with scoped tokens.
 - **Node provisioning**: install a node over SSH or with a cloud-init snippet; optional Cloudflare DNS records for nodes.
 - **Health checks**: real client connections to every node, with an optional external probe point.
 - **Webhooks** for panel events.
@@ -179,8 +180,17 @@ GET /sub/<token>[?format=links|singbox|clash]
 ```
 
 `format` takes precedence over the `User-Agent`. Hiddify gets base64 links, Karing and sing-box clients get JSON,
-Mihomo-compatible clients get YAML. An unknown token returns `404`, a disabled user `403`; an expired user or
-one over the limit still gets `200` with the real `subscription-userinfo`, but is removed from node configs.
+Mihomo-compatible clients get YAML. User-Agent rules from the Settings page are checked before the built-in ones.
+The sing-box and Mihomo formats can be turned off there (links cannot): `?format=` for a disabled format returns
+`404`, and a client detected by `User-Agent` gets links instead.
+
+An unknown token returns `404`, a disabled user `403`; an expired user or one over the limit still gets `200`
+with the real `subscription-userinfo`, but is removed from node configs.
+
+Every response carries `subscription-userinfo`, `profile-title`, `profile-update-interval` and
+`content-disposition`; `support-url`, `profile-web-page-url` and `announce` are sent only when set on the
+Settings page. Happ (`User-Agent` `Happ/…`) also gets the routing profile in the `routing` header with the
+links format.
 
 ## REST API
 
@@ -206,7 +216,11 @@ make agent GOOS=linux GOARCH=amd64       # bin/agent-linux-amd64
 make sing-box GOOS=linux GOARCH=arm64    # bin/sing-box-linux-arm64
 make deb                                 # snapshot deb packages in dist/ via GoReleaser
 make proto                               # regenerate gRPC code from proto/
+make css                                 # rebuild web static/app.css with the pinned standalone Tailwind CLI
 ```
+
+The compiled `internal/transport/http/web/static/app.css` is committed, so a plain Go build needs no frontend
+tooling. Run `make css` after changing classes in templates or `app.js`; CI fails when `app.css` is out of date.
 
 Repository layout:
 
@@ -218,7 +232,8 @@ Repository layout:
 | `internal/service` | Focused business services with consumer-owned dependency interfaces |
 | `internal/worker` | User watching, node checks, event delivery, reconciliation, task execution and agent engine/network workers |
 | `internal/service/nodeconfig` | Desired configuration preparation and WG/monitor credentials |
-| `internal/transport/http/api`, `internal/transport/http/web` | REST API and web UI |
+| `internal/transport/http/api`, `internal/transport/http/web` | REST API and web UI (templates, compiled `static/`, stylesheet sources in `assets/`) |
+| `internal/service/settings` | Panel settings changed at runtime from the Settings page |
 | `internal/repository/sqlite` | SQLite connection and shared helpers; one repository package per domain beneath it |
 | `migrations` | SQLite schema migrations, embedded and applied on open |
 | `internal/transport/grpc/nodehub`, `internal/app/agent` | Both sides of the Sync link |
@@ -226,6 +241,8 @@ Repository layout:
 | `internal/platform`, `internal/clients` | Installer artifacts, engine/system adapters, SSH, DNS, probe and webhook clients |
 | `proto/`, `internal/transport/grpc/pb`, `internal/transport/grpc/v2raystats` | Protobuf sources and generated gRPC contracts |
 | `deploy/apt/` | deb scripts, systemd units, agent installer, apt repository script |
+| `deploy/rules/` | Conversion of the routing lists to Mihomo rule sets |
+| `pkg/logger` | Process logger with per-context correlation attributes |
 | `install.sh` | One-line server installer (panel + local node) |
 | `build/sing-box/` | Separate Go module pinning the sing-box version |
 | `test/network-e2e/` | Docker network test bench |
@@ -281,6 +298,9 @@ the bench. Reports remain under `bin/network-e2e/`.
 
 Pushing a `v*` tag builds deb packages and a GitHub Release with GoReleaser and publishes them to the signed
 apt repository on GitHub Pages. See [docs/release.md](docs/release.md).
+
+The `rules` workflow republishes the routing lists for Mihomo clients daily as assets of the `rules` release;
+run it once by hand before the first release, see [routing lists](docs/release.md#routing-lists-for-mihomo-clients).
 
 ## Scope
 

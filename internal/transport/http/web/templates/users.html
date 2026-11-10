@@ -1,17 +1,56 @@
 {{define "content"}}
-<h1>Users</h1>
-<div class="card">
-  <form method="post" action="{{base}}/users" class="row">
-    <input type="text" name="name" placeholder="Name (Latin letters)" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}">
-    <label>Limit, GB <input type="number" name="limit_gb" class="narrow" min="0" step="any" placeholder="∞"></label>
-    <label>Term, days <input type="number" name="days" class="narrow" min="0" placeholder="∞"></label>
-    <button class="primary">Add</button>
-  </form>
+<div class="flex flex-wrap items-center justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Users</h1>
+    <p class="text-sm text-muted-foreground">Subscriptions, traffic limits and terms.</p>
+  </div>
+  <button type="button" class="btn" data-dialog-open="add-user">{{template "icon" "plus"}}Add user</button>
 </div>
-{{if .Data.Users}}
-<table>
-  <thead><tr><th>Name</th><th>Status</th><th>Traffic</th><th>Until</th><th></th></tr></thead>
-  <tbody>{{range .Data.Users}}{{template "user_row" .}}{{end}}</tbody>
-</table>
-{{else}}<p class="muted">No users yet.</p>{{end}}
+
+<div class="card py-0">
+  {{if .Data.Users}}
+  <div class="table-container">
+    <table class="table">
+      <thead><tr><th class="ps-4">Name</th><th>Status</th><th>Traffic</th><th>Until</th><th></th></tr></thead>
+      <tbody class="[&_td:first-child]:ps-4 [&_td:last-child]:pe-4">{{range .Data.Users}}{{template "user_row" .}}{{end}}</tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty py-12">
+    <header><h3>No users yet</h3><p>Add the first user to get a subscription link.</p></header>
+  </div>
+  {{end}}
+</div>
+
+<dialog id="add-user" class="dialog" aria-labelledby="add-user-title">
+  <div>
+    <header>
+      <h2 id="add-user-title">Add user</h2>
+      <p>Leave the limit or the term empty for none.</p>
+    </header>
+    <section>
+      <form id="add-user-form" method="post" action="{{base}}/users" class="grid gap-4">
+        <div class="field">
+          <label for="new-user-name">Name</label>
+          <input id="new-user-name" type="text" name="name" placeholder="Latin letters, e.g. alice" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="field">
+            <label for="new-user-limit">Limit, GB</label>
+            <input id="new-user-limit" type="number" name="limit_gb" min="0" step="any" placeholder="∞">
+          </div>
+          <div class="field">
+            <label for="new-user-days">Term, days</label>
+            <input id="new-user-days" type="number" name="days" min="0" placeholder="∞">
+          </div>
+        </div>
+      </form>
+    </section>
+    <footer>
+      <button type="button" class="btn" data-variant="outline" data-dialog-close>Cancel</button>
+      <button class="btn" form="add-user-form">Add</button>
+    </footer>
+    <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" aria-label="Close dialog" data-dialog-close>{{template "icon" "x"}}</button>
+  </div>
+</dialog>
 {{end}}

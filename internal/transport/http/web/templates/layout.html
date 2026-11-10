@@ -5,27 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
 <title>{{.Title}} · giocondo-vpn</title>
-<link rel="stylesheet" href="{{base}}/static/style.css">
+<link rel="stylesheet" href="{{base}}/static/app.css">
+<script src="{{base}}/static/theme.js"></script>
 <script src="{{base}}/static/htmx.min.js" defer></script>
+<script src="{{base}}/static/basecoat.min.js" defer></script>
 <script src="{{base}}/static/app.js" defer></script>
 </head>
-<body>
+<body class="bg-background text-foreground antialiased">
 {{if .Authed}}
-<header>
-  <span class="brand">giocondo-vpn</span>
-  <nav>
-    <a href="{{base}}/users" {{if eq .Nav "users"}}class="on"{{end}}>Users</a>
-    <a href="{{base}}/nodes" {{if eq .Nav "nodes"}}class="on"{{end}}>Nodes</a>
-    <a href="{{base}}/tokens" {{if eq .Nav "tokens"}}class="on"{{end}}>API tokens</a>
-    <a href="{{base}}/settings" {{if eq .Nav "settings"}}class="on"{{end}}>Settings</a>
+<aside class="sidebar" data-side="left" aria-hidden="false">
+  <nav aria-label="Main navigation">
+    <header class="px-4 py-4">
+      <a href="{{base}}/users" class="flex items-center gap-2 font-semibold">
+        <span class="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">{{template "icon" "shield"}}</span>
+        giocondo-vpn
+      </a>
+    </header>
+    <section class="px-2" hx-boost="true">
+      <div role="group">
+        <ul class="gap-1">
+          <li><a href="{{base}}/users"{{if eq .Nav "users"}} aria-current="page"{{end}}>{{template "icon" "users"}}<span>Users</span></a></li>
+          <li><a href="{{base}}/nodes"{{if eq .Nav "nodes"}} aria-current="page"{{end}}>{{template "icon" "server"}}<span>Nodes</span></a></li>
+          <li><a href="{{base}}/tokens"{{if eq .Nav "tokens"}} aria-current="page"{{end}}>{{template "icon" "key"}}<span>API tokens</span></a></li>
+          <li><a href="{{base}}/settings"{{if eq .Nav "settings"}} aria-current="page"{{end}}>{{template "icon" "sliders"}}<span>Settings</span></a></li>
+        </ul>
+      </div>
+    </section>
+    <footer class="gap-1 p-2">
+      <button type="button" class="btn justify-start" data-variant="ghost" data-theme-toggle data-keep-mobile-sidebar-open>
+        <span class="dark:hidden">{{template "icon" "moon"}}</span><span class="hidden dark:inline">{{template "icon" "sun"}}</span>
+        <span>Toggle theme</span>
+      </button>
+      <form method="post" action="{{base}}/logout">
+        <button class="btn w-full justify-start" data-variant="ghost">{{template "icon" "log-out"}}<span>Sign out</span></button>
+      </form>
+    </footer>
   </nav>
-  <form method="post" action="{{base}}/logout"><button class="small">Sign out</button></form>
-</header>
+</aside>
 {{end}}
-<main>
-{{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}
-{{if .Error}}<div class="error">{{.Error}}</div>{{end}}
-{{template "content" .}}
+<main class="min-h-screen">
+  {{if .Authed}}
+  <header class="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
+    <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" aria-label="Toggle sidebar" data-sidebar-toggle>{{template "icon" "panel-left"}}</button>
+    <span class="text-sm text-muted-foreground">{{.Title}}</span>
+  </header>
+  {{end}}
+  <div class="mx-auto flex max-w-6xl flex-col gap-6 p-4 md:p-8">
+    {{if .Error}}<div class="alert" data-variant="destructive" role="alert"><h2>{{.Error}}</h2></div>{{end}}
+    {{template "content" .}}
+  </div>
 </main>
+<div id="toaster" class="toaster">
+  {{if .Flash}}<div class="toast" role="status" aria-atomic="true" aria-hidden="false" data-category="success">
+    <div class="toast-content"><svg aria-hidden="true"><use href="{{base}}/static/icons.svg#circle-check"/></svg><section><h2>{{.Flash}}</h2></section></div>
+  </div>{{end}}
+</div>
 </body>
 </html>

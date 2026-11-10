@@ -1,42 +1,66 @@
 {{define "content"}}
-<h1>API tokens</h1>
+<div>
+  <h1 class="text-2xl font-semibold tracking-tight">API tokens</h1>
+  <p class="text-sm text-muted-foreground">Bearer tokens for the REST API.</p>
+</div>
+
 {{with .Data.Created}}
-<div class="card">
-  <p>Token <b>{{.Name}}</b> ({{.Scope}}) created. Copy it now: it will not be shown again.</p>
-  <p class="row"><input type="text" id="new-token" value="{{$.Data.Secret}}" readonly>
-    <button type="button" data-copy="new-token">Copy</button></p>
-  <p class="muted">Request header: <code>Authorization: Bearer &lt;token&gt;</code>, API address: <code>{{base}}/api/…</code></p>
+<div class="alert">
+  <h2>Token {{.Name}} ({{.Scope}}) created</h2>
+  <section class="flex flex-col gap-3">
+    <p>Copy it now: it will not be shown again.</p>
+    <div class="flex gap-2">
+      <input class="input font-mono text-xs" type="text" id="new-token" value="{{$.Data.Secret}}" readonly>
+      <button type="button" class="btn" data-variant="outline" data-size="icon" aria-label="Copy" data-copy="new-token">{{template "icon" "copy"}}</button>
+    </div>
+    <p>Request header: <code>Authorization: Bearer &lt;token&gt;</code>, API address: <code>{{base}}/api/…</code></p>
+  </section>
 </div>
 {{end}}
-{{if .Data.Tokens}}
-<table>
-  <thead><tr><th>Name</th><th>Scope</th><th>Created</th><th>Last used</th><th></th></tr></thead>
-  <tbody>
-  {{range .Data.Tokens}}
-  <tr>
-    <td>{{.Name}}</td>
-    <td><span class="badge">{{.Scope}}</span></td>
-    <td class="muted">{{datetime .CreatedAt}}</td>
-    <td class="muted">{{ago .LastUsedAt}}</td>
-    <td><form method="post" action="{{base}}/tokens/{{.ID}}/delete" hx-boost="true" hx-confirm="Revoke token {{.Name}}? Requests with it will stop working."><button class="danger small">Revoke</button></form></td>
-  </tr>
-  {{end}}
-  </tbody>
-</table>
-{{else}}<p class="muted">No tokens yet: the REST API is unavailable.</p>{{end}}
 
-<h2>Issue a token</h2>
+<div class="card py-0">
+  {{if .Data.Tokens}}
+  <div class="table-container">
+    <table class="table">
+      <thead><tr><th class="ps-4">Name</th><th>Scope</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+      <tbody>
+      {{range .Data.Tokens}}
+      <tr>
+        <td class="ps-4 font-medium">{{.Name}}</td>
+        <td><span class="badge" data-variant="secondary">{{.Scope}}</span></td>
+        <td class="text-muted-foreground">{{datetime .CreatedAt}}</td>
+        <td class="text-muted-foreground">{{ago .LastUsedAt}}</td>
+        <td class="pe-4 text-end"><form method="post" action="{{base}}/tokens/{{.ID}}/delete" hx-boost="true" hx-confirm="Revoke token {{.Name}}? Requests with it will stop working."><button class="btn" data-variant="destructive" data-size="sm">Revoke</button></form></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty py-12">
+    <header><h3>No tokens yet</h3><p>The REST API is unavailable until a token is issued.</p></header>
+  </div>
+  {{end}}
+</div>
+
 <div class="card">
-  <form method="post" action="{{base}}/tokens">
-    <p class="row">
-      <input type="text" name="name" placeholder="Name, e.g. grafana" required maxlength="64">
-      <select name="scope">
-        <option value="monitor">monitor: read only</option>
-        <option value="node-sync">node-sync: read and nodes</option>
-        <option value="admin">admin: everything</option>
-      </select>
-      <button class="primary">Issue</button>
-    </p>
-  </form>
+  <header><h2>Issue a token</h2></header>
+  <section>
+    <form method="post" action="{{base}}/tokens" class="flex flex-wrap items-end gap-3">
+      <div class="field grow">
+        <label for="token-name">Name</label>
+        <input id="token-name" type="text" name="name" placeholder="grafana" required maxlength="64">
+      </div>
+      <div class="field">
+        <label for="token-scope">Scope</label>
+        <select id="token-scope" class="select" name="scope">
+          <option value="monitor">monitor: read only</option>
+          <option value="node-sync">node-sync: read and nodes</option>
+          <option value="admin">admin: everything</option>
+        </select>
+      </div>
+      <button class="btn">Issue</button>
+    </form>
+  </section>
 </div>
 {{end}}

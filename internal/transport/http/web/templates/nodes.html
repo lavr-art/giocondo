@@ -1,43 +1,92 @@
 {{define "content"}}
-<h1>Nodes</h1>
-{{if .Data.Nodes}}
-<table>
-  <thead><tr><th>Name</th><th>Address</th><th>Status</th><th>Last seen</th><th>Protocols</th></tr></thead>
-  <tbody>
-  {{range .Data.Nodes}}
-  <tr>
-    <td><a href="{{base}}/nodes/{{.ID}}">{{.Name}}</a>{{if .Region}} <span class="muted">{{.Region}}</span>{{end}}</td>
-    <td>{{.Host}}{{if and .IP (ne .IP .Host)}} <span class="muted">{{.IP}}</span>{{end}}</td>
-    <td><span class="badge {{.Status}}">{{status .Status}}</span>{{if .ApplyError}} <span class="badge expired">config error</span>{{else if .Dirty}} <span class="badge warn">config pending</span>{{end}}</td>
-    <td class="muted">{{ago .LastSeen}}</td>
-    <td>{{range .Inbounds}}{{proto .Type}} <span class="muted">:{{.Port}}</span><br>{{end}}</td>
-  </tr>
-  {{end}}
-  </tbody>
-</table>
-{{else}}<p class="muted">No nodes yet.</p>{{end}}
-
-<h2>Add a node</h2>
-<div class="card">
-  <form method="post" action="{{base}}/nodes">
-    <p class="row">
-      <input type="text" name="name" placeholder="Name, e.g. n1" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}">
-      <input type="text" name="host" placeholder="Domain or IP for clients" required>
-      <input type="text" name="ip" placeholder="IP (optional)">
-      <input type="text" name="region" placeholder="Region (optional)">
-    </p>
-    <p class="row"><label><input type="checkbox" name="vless" checked> VLESS Reality</label>
-      port <input type="number" name="vless_port" class="narrow" placeholder="443">
-      camouflage <input type="text" name="vless_dest" placeholder="www.microsoft.com:443"></p>
-    <p class="row"><label><input type="checkbox" name="hy2" checked> Hysteria2</label>
-      port <input type="number" name="hy2_port" class="narrow" placeholder="8443">
-      <label><input type="checkbox" name="hy2_obfs"> obfs</label>
-      <label><input type="checkbox" name="hy2_acme"> Let's Encrypt</label>
-      <input type="email" name="hy2_email" placeholder="email for Let's Encrypt"></p>
-    <p class="row"><label><input type="checkbox" name="wg" checked> WireGuard</label>
-      port <input type="number" name="wg_port" class="narrow" placeholder="51820"></p>
-    <button class="primary">Add</button>
-    <span class="muted">The panel generates keys and certificates itself.</span>
-  </form>
+<div class="flex flex-wrap items-center justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Nodes</h1>
+    <p class="text-sm text-muted-foreground">Servers running the agent and sing-box.</p>
+  </div>
+  <button type="button" class="btn" data-dialog-open="add-node">{{template "icon" "plus"}}Add node</button>
 </div>
+
+<div class="card py-0">
+  {{if .Data.Nodes}}
+  <div class="table-container">
+    <table class="table">
+      <thead><tr><th class="ps-4">Name</th><th>Address</th><th>Status</th><th>Last seen</th><th class="pe-4">Protocols</th></tr></thead>
+      <tbody class="[&_td:first-child]:ps-4 [&_td:last-child]:pe-4">
+      {{range .Data.Nodes}}
+      <tr>
+        <td><a class="font-medium hover:underline" href="{{base}}/nodes/{{.ID}}">{{.Name}}</a>{{if .Region}} <span class="text-muted-foreground">{{.Region}}</span>{{end}}</td>
+        <td class="font-mono text-xs">{{.Host}}{{if and .IP (ne .IP .Host)}}<br><span class="text-muted-foreground">{{.IP}}</span>{{end}}</td>
+        <td><div class="flex flex-wrap gap-1">{{template "status_badge" .Status}}{{if .ApplyError}}{{template "error_badge" "config error"}}{{else if .Dirty}}{{template "warn_badge" "config pending"}}{{end}}</div></td>
+        <td class="text-muted-foreground">{{ago .LastSeen}}</td>
+        <td><div class="flex flex-wrap gap-1">{{range .Inbounds}}<span class="badge" data-variant="secondary">{{proto .Type}} :{{.Port}}</span>{{end}}</div></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty py-12">
+    <header><h3>No nodes yet</h3><p>Add a node, then install the agent on the server.</p></header>
+  </div>
+  {{end}}
+</div>
+
+<dialog id="add-node" class="dialog w-full sm:max-w-xl" aria-labelledby="add-node-title">
+  <div>
+    <header>
+      <h2 id="add-node-title">Add a node</h2>
+      <p>The panel generates keys and certificates itself.</p>
+    </header>
+    <section>
+      <form id="add-node-form" method="post" action="{{base}}/nodes" class="grid gap-5">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="field">
+            <label for="node-name">Name</label>
+            <input id="node-name" type="text" name="name" placeholder="n1" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}">
+          </div>
+          <div class="field">
+            <label for="node-host">Domain or IP for clients</label>
+            <input id="node-host" type="text" name="host" required>
+          </div>
+          <div class="field">
+            <label for="node-ip">IP</label>
+            <input id="node-ip" type="text" name="ip" placeholder="optional">
+          </div>
+          <div class="field">
+            <label for="node-region">Region</label>
+            <input id="node-region" type="text" name="region" placeholder="optional">
+          </div>
+        </div>
+        <fieldset class="grid gap-3 rounded-lg border p-4">
+          <label class="label gap-2 font-medium"><input class="input" type="checkbox" name="vless" checked> VLESS Reality</label>
+          <div class="grid grid-cols-[6rem_1fr] gap-3">
+            <input class="input" type="number" name="vless_port" placeholder="443" aria-label="VLESS port">
+            <input class="input" type="text" name="vless_dest" placeholder="camouflage, www.microsoft.com:443" aria-label="Camouflage">
+          </div>
+        </fieldset>
+        <fieldset class="grid gap-3 rounded-lg border p-4">
+          <label class="label gap-2 font-medium"><input class="input" type="checkbox" name="hy2" checked> Hysteria2</label>
+          <div class="grid grid-cols-[6rem_1fr] gap-3">
+            <input class="input" type="number" name="hy2_port" placeholder="8443" aria-label="Hysteria2 port">
+            <input class="input" type="email" name="hy2_email" placeholder="email for Let's Encrypt" aria-label="Email for Let's Encrypt">
+          </div>
+          <div class="flex flex-wrap gap-4">
+            <label class="label gap-2"><input class="input" type="checkbox" name="hy2_obfs"> obfs</label>
+            <label class="label gap-2"><input class="input" type="checkbox" name="hy2_acme"> Let's Encrypt</label>
+          </div>
+        </fieldset>
+        <fieldset class="grid gap-3 rounded-lg border p-4">
+          <label class="label gap-2 font-medium"><input class="input" type="checkbox" name="wg" checked> WireGuard</label>
+          <input class="input w-24" type="number" name="wg_port" placeholder="51820" aria-label="WireGuard port">
+        </fieldset>
+      </form>
+    </section>
+    <footer>
+      <button type="button" class="btn" data-variant="outline" data-dialog-close>Cancel</button>
+      <button class="btn" form="add-node-form">Add</button>
+    </footer>
+    <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" aria-label="Close dialog" data-dialog-close>{{template "icon" "x"}}</button>
+  </div>
+</dialog>
 {{end}}

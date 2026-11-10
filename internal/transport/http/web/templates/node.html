@@ -59,7 +59,7 @@
     <div class="card">
       <header>
         <h2>Availability</h2>
-        <p>Agent: {{if .AgentConnected}}connected{{else}}no recent contact{{end}} · domain <b class="text-foreground">{{.Host}}</b> · active IP <b class="text-foreground">{{.IP}}</b></p>
+        <p>Agent: {{if .AgentConnected}}connected{{else}}no recent contact{{end}} · domain <b class="text-foreground">{{.Host}}</b> · active IP <b class="text-foreground">{{.IP}}</b>{{if .IP}} · <a class="underline underline-offset-4" href="https://ip.net.coffee/ip/{{.IP}}" target="_blank" rel="noopener noreferrer">IP reputation</a>{{end}}</p>
       </header>
       <section class="flex flex-col gap-4">
         {{if .Warning}}<div class="alert" data-variant="destructive" role="alert"><h2>The port was unreachable in three checks in a row.</h2></div>{{end}}
@@ -82,6 +82,7 @@
         {{range .Addresses}}
         <div class="flex flex-wrap items-center gap-2 rounded-lg border p-3">
           <span class="grow font-mono text-sm">{{.IP}}</span>
+          <a class="btn" data-variant="link" data-size="sm" href="https://ip.net.coffee/ip/{{.IP}}" target="_blank" rel="noopener noreferrer">IP reputation</a>
           {{if ne .IP $.Data.Node.IP}}
           <form method="post" action="{{base}}/nodes/{{.NodeID}}/rotate-ip#network"><input type="hidden" name="mode" value="existing_ip"><input type="hidden" name="ip" value="{{.IP}}"><button class="btn" data-variant="outline" data-size="sm">Switch IP to {{.IP}}</button></form>
           <form method="post" action="{{base}}/nodes/{{.NodeID}}/delete-address#network"><input type="hidden" name="address_id" value="{{.ID}}"><button class="btn" data-variant="destructive" data-size="sm">Remove address</button></form>

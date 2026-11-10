@@ -77,7 +77,9 @@ remain in the APT pool; for each recorded row use `apt-get download PACKAGE=VERS
 while services run. Verify downloaded packages against the signed APT repository or their original release checksums.
 
 Then stop all installed writers, including Caddy if installed. Unpack **all** recorded packages without configuring
-them. This distinction matters: historic postinst scripts may start a service immediately.
+them. This distinction matters: historic postinst scripts may start a service immediately. Configure them with the
+same recovery environment too: their postinst and readiness checks are then skipped, and the services are started
+only from `active-services` after the state is restored.
 
 ```sh
 systemctl stop giocondo-vpn-agent giocondo-vpn-panel giocondo-vpn-sing-box
@@ -87,7 +89,7 @@ systemctl stop caddy
 cd /root/giocondo-recovery-packages
 GIOCONDO_RESTORE_FROM="$snapshot" dpkg --unpack ./*.deb
 sh /root/giocondo-recover.sh restore-state "$snapshot"
-dpkg --configure -a
+GIOCONDO_RESTORE_FROM="$snapshot" dpkg --configure -a
 systemctl daemon-reload
 while IFS= read -r service; do systemctl start "$service"; done < "$snapshot/active-services"
 ```

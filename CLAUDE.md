@@ -19,7 +19,9 @@ for Hiddify, Happ, v2rayNG and other compatible clients.
   files embedded via `embed`. `static/app.css` is compiled from
   `internal/transport/http/web/assets/input.css` by the standalone
   Tailwind CLI (`make css`) and committed; CI checks it is current. Run `make css` after changing classes
-  in templates or `app.js`. There is no SPA, React, npm build or separate frontend module.
+  in templates or `app.js`. Charts use the vendored Chart.js with the Basecoat chart wrapper
+  (`static/charts.min.js`), loaded only by pages that draw them. Static URLs carry a content hash
+  (`asset` template function). There is no SPA, React, npm build or separate frontend module.
 - Nodes: sing-box only; VLESS Reality, Hysteria2, WireGuard.
   The core version is pinned in `build/sing-box/go.mod`, separately from the root module.
 - Link: an outbound gRPC `Sync` stream from the agent with mTLS and a private CA.
